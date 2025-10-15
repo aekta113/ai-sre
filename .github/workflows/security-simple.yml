@@ -27,7 +27,7 @@ jobs:
           docker buildx build --platform linux/amd64,linux/arm64 -t ai-sre:security-scan .
         else
           echo "Non-release build - building for AMD64 only"
-          docker buildx build --platform linux/amd64 -t ai-sre:security-scan .
+          docker buildx build --platform linux/amd64 -t ai-sre:security-scan --load .
         fi
         
     - name: Run Trivy vulnerability scanner (table format)
