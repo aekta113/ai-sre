@@ -115,3 +115,24 @@ install-n8n-workflow: ## Install example N8N workflow
 	@echo "2. Configure webhook URL: http://ai-sre:8080"
 	@echo "3. Set environment variables in N8N for GitHub token and Telegram bot"
 	@echo "4. Test with sample alert from examples/sample-alert.json"
+
+ci-test: ## Run CI tests locally
+	@echo "Running CI tests locally..."
+	@docker build -t ai-sre:ci-test .
+	@docker run --rm -p 8080:8080 ai-sre:ci-test &
+	@sleep 10
+	@curl -f http://localhost:8080/health || exit 1
+	@curl -f http://localhost:8080/ready || exit 1
+	@curl -f http://localhost:8080/version || exit 1
+	@pkill -f "ai-sre:ci-test" || true
+	@echo "✅ CI tests passed!"
+
+docker-push: ## Push Docker image to registry
+	@echo "Pushing Docker image to registry..."
+	@docker tag ai-sre:latest ghcr.io/nachtschatt3n/ai-sre:latest
+	@docker push ghcr.io/nachtschatt3n/ai-sre:latest
+
+security-scan: ## Run security scan locally
+	@echo "Running security scan..."
+	@docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+		aquasec/trivy image ai-sre:latest
