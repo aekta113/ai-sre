@@ -38,7 +38,7 @@ A lean, containerized toolbox for AI-powered Site Reliability Engineering operat
 
 ```bash
 # Clone and setup
-git clone https://github.com/your-org/ai-sre.git
+git clone https://github.com/nachtschatt3n/ai-sre.git
 cd ai-sre
 
 # Configure environment
@@ -553,9 +553,9 @@ We welcome contributions! This project follows a lean architecture principle whe
 
 ## 🆘 Support & Community
 
-- 📧 **Issues**: [GitHub Issues](https://github.com/your-org/ai-sre/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/your-org/ai-sre/discussions)
-- 📚 **Wiki**: [Project Wiki](https://github.com/your-org/ai-sre/wiki)
+- 📧 **Issues**: [GitHub Issues](https://github.com/nachtschatt3n/ai-sre/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/nachtschatt3n/ai-sre/discussions)
+- 📚 **Wiki**: [Project Wiki](https://github.com/nachtschatt3n/ai-sre/wiki)
 - 🐛 **Bug Reports**: Use GitHub Issues with the `bug` label
 
 ## 🏆 Acknowledgments
@@ -582,6 +582,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **🚀 Built with ❤️ for the Kubernetes and GitOps community**
 
-[⭐ Star this repo](https://github.com/your-org/ai-sre) | [🐛 Report Bug](https://github.com/your-org/ai-sre/issues) | [💡 Request Feature](https://github.com/your-org/ai-sre/issues)
+[⭐ Star this repo](https://github.com/nachtschatt3n/ai-sre) | [🐛 Report Bug](https://github.com/nachtschatt3n/ai-sre/issues) | [💡 Request Feature](https://github.com/nachtschatt3n/ai-sre/issues)
 
 </div>
