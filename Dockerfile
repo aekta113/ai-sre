@@ -16,11 +16,14 @@ RUN apk add --no-cache \
     # Processing tools
     jq yq \
     # Network tools
-    bind-tools netcat-openbsd
+    bind-tools netcat-openbsd \
+    # SSL support for Helm
+    openssl
 
 # Install kubectl
 ARG KUBECTL_VERSION=v1.29.0
-RUN curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
+ARG ARCH=amd64
+RUN curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl" \
     && chmod +x kubectl \
     && mv kubectl /usr/local/bin/ \
     && kubectl version --client
@@ -29,7 +32,7 @@ RUN curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubec
 ARG HELM_VERSION=v3.13.3
 RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
     && chmod 700 get_helm.sh \
-    && ./get_helm.sh --version ${HELM_VERSION} \
+    && VERIFY_CHECKSUM=false ./get_helm.sh --version ${HELM_VERSION} \
     && rm get_helm.sh
 
 # Install Flux CLI v2
@@ -40,10 +43,10 @@ RUN curl -s https://fluxcd.io/install.sh | bash
 RUN apk add --no-cache github-cli
 
 # Install Python packages for MCP Server
-RUN pip3 install --no-cache-dir \
-    aiohttp \
-    pyyaml \
-    python-dotenv
+RUN apk add --no-cache \
+    py3-aiohttp \
+    py3-yaml \
+    py3-dotenv
 
 # Create application directory structure
 RUN mkdir -p /app/src \

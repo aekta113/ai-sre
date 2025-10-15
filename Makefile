@@ -45,6 +45,18 @@ test-mcp: ## Test MCP Server endpoints
 	@echo "Testing MCP Server version..."
 	@curl -s http://localhost:8080/version | jq .
 
+test-quick: ## Run quick test suite
+	@echo "Running quick test suite..."
+	@./quick-test.sh
+
+test-full: ## Run comprehensive test suite
+	@echo "Running comprehensive test suite..."
+	@./test.sh
+
+test-integration: ## Run integration test with mock k8s
+	@echo "Running integration test..."
+	@./integration-test.sh
+
 test-kubectl: ## Test kubectl command via MCP
 	@echo "Testing kubectl get pods via MCP..."
 	@curl -s -X POST http://localhost:8080/kubectl/get \
