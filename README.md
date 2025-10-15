@@ -6,6 +6,11 @@
 [![Kubernetes](https://img.shields.io/badge/kubernetes-ready-blue.svg)](https://kubernetes.io/)
 [![Flux](https://img.shields.io/badge/flux-ready-purple.svg)](https://fluxcd.io/)
 
+[![CI/CD Pipeline](https://github.com/nachtschatt3n/ai-sre/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/nachtschatt3n/ai-sre/actions/workflows/ci-cd.yml)
+[![Security Scan](https://github.com/nachtschatt3n/ai-sre/actions/workflows/security.yml/badge.svg)](https://github.com/nachtschatt3n/ai-sre/actions/workflows/security.yml)
+[![Multi-Platform Tests](https://github.com/nachtschatt3n/ai-sre/actions/workflows/test-matrix.yml/badge.svg)](https://github.com/nachtschatt3n/ai-sre/actions/workflows/test-matrix.yml)
+[![Docker Image](https://img.shields.io/badge/docker%20image-ghcr.io%2Fnachtschatt3n%2Fai--sre-blue)](https://github.com/nachtschatt3n/ai-sre/pkgs/container/ai-sre)
+
 A lean, containerized toolbox for AI-powered Site Reliability Engineering operations. This project provides a lightweight MCP (Model Context Protocol) server that exposes Kubernetes, Git, and Flux operations through a clean REST API, designed to be orchestrated by external systems like N8N.
 
 > **🚀 Production Ready**: Lightweight (< 256MB RAM), fast startup (< 10s), and battle-tested for Kubernetes operations with Flux GitOps.
