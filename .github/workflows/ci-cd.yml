@@ -172,6 +172,11 @@ jobs:
     needs: build-and-push
     if: github.event_name != 'pull_request'
     
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -205,6 +210,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      security-events: read
       
     steps:
     - name: Checkout code
