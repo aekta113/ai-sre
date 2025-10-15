@@ -84,11 +84,15 @@ wait_for_service() {
 test_container_startup() {
     log_info "Testing container startup..."
     
+    # Build container first
+    log_info "Building container..."
+    docker build -t ai-sre:test .
+    
     # Start container
     docker run -d --name "$CONTAINER_NAME" \
         -p 8080:8080 \
         -e AGENT_LOG_LEVEL=DEBUG \
-        ai-sre:latest
+        ai-sre:test
     
     # Wait for container to be ready
     sleep 5

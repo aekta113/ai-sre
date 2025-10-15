@@ -31,12 +31,13 @@ EOF
 
 # Start container with kubeconfig mounted
 echo "🚀 Starting AI SRE container with mock kubeconfig..."
+docker build -t ai-sre:integration-test .
 docker run -d --name ai-sre-integration-test \
   -p 8080:8080 \
   -v ~/.kube:/app/.kube:ro \
   -e KUBECONFIG=/app/.kube/config \
   -e KUBE_CONTEXT=mock-context \
-  ai-sre:latest
+  ai-sre:integration-test
 
 # Wait for container to be ready
 echo "⏳ Waiting for container to be ready..."

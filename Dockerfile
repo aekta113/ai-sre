@@ -22,11 +22,13 @@ RUN apk add --no-cache \
 
 # Install kubectl
 ARG KUBECTL_VERSION=v1.29.0
-ARG ARCH=amd64
-RUN curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl" \
-    && chmod +x kubectl \
-    && mv kubectl /usr/local/bin/ \
-    && kubectl version --client
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then ARCH="amd64"; fi && \
+    if [ "$ARCH" = "aarch64" ]; then ARCH="arm64"; fi && \
+    curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl" && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/ && \
+    kubectl version --client
 
 # Install Helm
 ARG HELM_VERSION=v3.13.3

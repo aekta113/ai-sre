@@ -7,9 +7,13 @@ set -e
 echo "🚀 AI SRE Quick Test"
 echo "==================="
 
+# Build container first
+echo "🔨 Building AI SRE container..."
+docker build -t ai-sre:quick-test .
+
 # Start container
 echo "📦 Starting AI SRE container..."
-docker run -d --name ai-sre-quick-test -p 8080:8080 ai-sre:latest
+docker run -d --name ai-sre-quick-test -p 8080:8080 ai-sre:quick-test
 
 # Wait for container to be ready
 echo "⏳ Waiting for container to be ready..."

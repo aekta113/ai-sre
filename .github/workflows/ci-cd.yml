@@ -28,20 +28,51 @@ jobs:
       run: |
         docker build -t ai-sre:test .
         
-    - name: Run quick test suite
+    - name: Test container startup
       run: |
-        chmod +x quick-test.sh
-        ./quick-test.sh
+        docker run -d --name ai-sre-test -p 8080:8080 ai-sre:test
+        sleep 10
         
-    - name: Run comprehensive test suite
+    - name: Test MCP Server endpoints
       run: |
-        chmod +x test.sh
-        ./test.sh
+        curl -f http://localhost:8080/health || exit 1
+        curl -f http://localhost:8080/ready || exit 1
+        curl -f http://localhost:8080/version || exit 1
         
-    - name: Run integration test
+    - name: Test kubectl functionality
       run: |
-        chmod +x integration-test.sh
-        ./integration-test.sh
+        curl -f -X POST http://localhost:8080/kubectl/version \
+          -H "Content-Type: application/json" \
+          -d '{}' || exit 1
+          
+    - name: Test git functionality
+      run: |
+        curl -f -X POST http://localhost:8080/git/status \
+          -H "Content-Type: application/json" \
+          -d '{}' || exit 1
+          
+    - name: Test flux functionality
+      run: |
+        curl -f -X POST http://localhost:8080/flux/version \
+          -H "Content-Type: application/json" \
+          -d '{}' || exit 1
+          
+    - name: Verify CLI tools
+      run: |
+        docker exec ai-sre-test kubectl version --client
+        docker exec ai-sre-test helm version --client
+        docker exec ai-sre-test flux version --client
+        docker exec ai-sre-test git --version
+        
+    - name: Check container stats
+      run: |
+        docker stats --no-stream ai-sre-test
+        
+    - name: Cleanup
+      if: always()
+      run: |
+        docker stop ai-sre-test || true
+        docker rm ai-sre-test || true
 
   build-and-push:
     name: Build and Push Docker Image
