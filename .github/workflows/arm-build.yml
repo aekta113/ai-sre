@@ -19,7 +19,7 @@ jobs:
       
     - name: Create ARM64 builder
       run: |
-        docker buildx create --name arm-builder --platform linux/arm64 --use
+        docker buildx create --name arm-builder --platform linux/arm64 --use || true
         docker buildx inspect --bootstrap
         
     - name: Build ARM64 image
@@ -50,9 +50,9 @@ jobs:
     - name: Cleanup
       if: always()
       run: |
-        docker stop ai-sre-arm-test || true
-        docker rm ai-sre-arm-test || true
-        docker buildx rm arm-builder || true
+        docker stop ai-sre-arm-test 2>/dev/null || true
+        docker rm ai-sre-arm-test 2>/dev/null || true
+        docker buildx rm arm-builder 2>/dev/null || true
         
   multi-platform-build:
     name: Multi-Platform Build
