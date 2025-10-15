@@ -87,7 +87,7 @@ RUN apk update && apk upgrade && apk add --no-cache \
     yq \
     grep \
     sed \
-    awk \
+    gawk \
     tree \
     findutils \
     netcat-openbsd \
