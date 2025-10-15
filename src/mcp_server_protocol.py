@@ -10,9 +10,11 @@ import sys
 import asyncio
 import logging
 from typing import Dict, Any, Optional, List, Union
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import uuid
+import glob
+import stat
 
 from aiohttp import web, WSMsgType
 import yaml
@@ -23,6 +25,92 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+class MCPCallLogger:
+    """Log all MCP calls to files with automatic retention"""
+
+    def __init__(self, log_dir: str = '/app/logs/mcp-calls', retention_days: int = 5):
+        self.log_dir = Path(log_dir)
+        self.retention_days = retention_days
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"MCP Call Logger initialized: {self.log_dir} (retention: {retention_days} days)")
+
+    async def log_call(self, method: str, params: Dict[str, Any],
+                       result: Optional[Dict[str, Any]] = None,
+                       error: Optional[Dict[str, Any]] = None,
+                       duration: float = 0):
+        """Log an MCP call to a daily log file"""
+        try:
+            # Create daily log file
+            date_str = datetime.now().strftime('%Y-%m-%d')
+            log_file = self.log_dir / f"mcp-calls-{date_str}.jsonl"
+
+            # Prepare log entry
+            log_entry = {
+                'timestamp': datetime.utcnow().isoformat(),
+                'method': method,
+                'params': params,
+                'success': error is None,
+                'duration': duration
+            }
+
+            if result:
+                log_entry['result'] = result
+            if error:
+                log_entry['error'] = error
+
+            # Write to file (async)
+            async with asyncio.Lock():
+                with open(log_file, 'a') as f:
+                    f.write(json.dumps(log_entry) + '\n')
+
+        except Exception as e:
+            logger.error(f"Failed to log MCP call: {e}")
+
+    async def cleanup_old_logs(self):
+        """Delete log files older than retention_days"""
+        try:
+            cutoff_date = datetime.now() - timedelta(days=self.retention_days)
+            deleted_count = 0
+
+            for log_file in self.log_dir.glob('mcp-calls-*.jsonl'):
+                # Extract date from filename
+                try:
+                    date_str = log_file.stem.replace('mcp-calls-', '')
+                    file_date = datetime.strptime(date_str, '%Y-%m-%d')
+
+                    if file_date < cutoff_date:
+                        log_file.unlink()
+                        deleted_count += 1
+                        logger.info(f"Deleted old MCP log: {log_file.name}")
+                except ValueError:
+                    logger.warning(f"Invalid log file name format: {log_file.name}")
+
+            if deleted_count > 0:
+                logger.info(f"Cleaned up {deleted_count} old MCP log files")
+
+        except Exception as e:
+            logger.error(f"Failed to cleanup old logs: {e}")
+
+    def get_log_stats(self) -> Dict[str, Any]:
+        """Get statistics about log files"""
+        try:
+            log_files = list(self.log_dir.glob('mcp-calls-*.jsonl'))
+            total_size = sum(f.stat().st_size for f in log_files)
+
+            return {
+                'log_directory': str(self.log_dir),
+                'total_files': len(log_files),
+                'total_size_bytes': total_size,
+                'total_size_mb': round(total_size / (1024 * 1024), 2),
+                'retention_days': self.retention_days,
+                'oldest_log': min((f.stem.replace('mcp-calls-', '') for f in log_files), default='none'),
+                'newest_log': max((f.stem.replace('mcp-calls-', '') for f in log_files), default='none')
+            }
+        except Exception as e:
+            logger.error(f"Failed to get log stats: {e}")
+            return {'error': str(e)}
 
 
 class MCPMessage:
@@ -146,21 +234,35 @@ class CommandExecutor:
 
 class MCPServer:
     """MCP Protocol compliant server"""
-    
+
     def __init__(self):
         self.executor = CommandExecutor()
         self.server_info = {
             "name": "ai-sre-mcp-server",
             "version": "1.0.0"
         }
-        
+
+        # Initialize MCP call logger
+        self.call_logger = MCPCallLogger(
+            log_dir=os.getenv('MCP_LOG_DIR', '/app/logs/mcp-calls'),
+            retention_days=int(os.getenv('MCP_LOG_RETENTION_DAYS', '5'))
+        )
+
+        # Allowed directories for file operations
+        self.allowed_directories = [
+            Path('/app/k8s-repo'),
+            Path('/app/runbooks'),
+            Path('/app/work'),
+            Path('/app/logs')
+        ]
+
         # MCP Capabilities
         self.capabilities = {
             "tools": {},
             "resources": {},
             "prompts": {}
         }
-        
+
         # Initialize tools
         self._initialize_tools()
         self._initialize_resources()
@@ -377,6 +479,123 @@ class MCPServer:
                         }
                     }
                 }
+            },
+            "file_read": {
+                "name": "file_read",
+                "description": "Read file contents from allowed directories (k8s-repo, runbooks, work, logs)",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "File path to read"
+                        },
+                        "encoding": {
+                            "type": "string",
+                            "description": "File encoding (default: utf-8)",
+                            "default": "utf-8"
+                        }
+                    },
+                    "required": ["path"]
+                }
+            },
+            "file_write": {
+                "name": "file_write",
+                "description": "Write content to file in allowed directories (k8s-repo, runbooks, work)",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "File path to write"
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "Content to write to file"
+                        },
+                        "encoding": {
+                            "type": "string",
+                            "description": "File encoding (default: utf-8)",
+                            "default": "utf-8"
+                        },
+                        "create_dirs": {
+                            "type": "boolean",
+                            "description": "Create parent directories if they don't exist",
+                            "default": True
+                        }
+                    },
+                    "required": ["path", "content"]
+                }
+            },
+            "file_list": {
+                "name": "file_list",
+                "description": "List files and directories in a path",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Directory path to list"
+                        },
+                        "pattern": {
+                            "type": "string",
+                            "description": "Glob pattern to filter files (e.g., '*.yaml')"
+                        },
+                        "recursive": {
+                            "type": "boolean",
+                            "description": "List files recursively",
+                            "default": False
+                        }
+                    },
+                    "required": ["path"]
+                }
+            },
+            "file_delete": {
+                "name": "file_delete",
+                "description": "Delete a file (with safety checks)",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "File path to delete"
+                        },
+                        "confirm": {
+                            "type": "boolean",
+                            "description": "Confirmation flag (must be true to delete)",
+                            "default": False
+                        }
+                    },
+                    "required": ["path", "confirm"]
+                }
+            },
+            "file_exists": {
+                "name": "file_exists",
+                "description": "Check if a file or directory exists",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to check"
+                        }
+                    },
+                    "required": ["path"]
+                }
+            },
+            "file_info": {
+                "name": "file_info",
+                "description": "Get file or directory metadata",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to get info for"
+                        }
+                    },
+                    "required": ["path"]
+                }
             }
         }
     
@@ -447,9 +666,17 @@ class MCPServer:
             logger.error(f"Tool execution failed: {e}")
             raise ValueError(f"Tool execution failed: {str(e)}")
     
+    def _is_path_allowed(self, file_path: str) -> bool:
+        """Check if file path is within allowed directories"""
+        try:
+            abs_path = Path(file_path).resolve()
+            return any(abs_path.is_relative_to(allowed_dir) for allowed_dir in self.allowed_directories)
+        except Exception:
+            return False
+
     async def _execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a specific tool"""
-        
+
         if tool_name == "kubectl_get":
             return await self._kubectl_get(arguments)
         elif tool_name == "kubectl_describe":
@@ -470,6 +697,18 @@ class MCPServer:
             return await self._git_commit(arguments)
         elif tool_name == "git_push":
             return await self._git_push(arguments)
+        elif tool_name == "file_read":
+            return await self._file_read(arguments)
+        elif tool_name == "file_write":
+            return await self._file_write(arguments)
+        elif tool_name == "file_list":
+            return await self._file_list(arguments)
+        elif tool_name == "file_delete":
+            return await self._file_delete(arguments)
+        elif tool_name == "file_exists":
+            return await self._file_exists(arguments)
+        elif tool_name == "file_info":
+            return await self._file_info(arguments)
         else:
             raise ValueError(f"Unknown tool: {tool_name}")
     
@@ -805,7 +1044,265 @@ class MCPServer:
                 'success': False,
                 'error': f'Git push failed: {str(e)}'
             }
-    
+
+    async def _file_read(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Read file contents"""
+        file_path = args.get('path')
+        encoding = args.get('encoding', 'utf-8')
+
+        if not self._is_path_allowed(file_path):
+            return {
+                'success': False,
+                'error': f'Access denied: Path {file_path} is not in allowed directories (k8s-repo, runbooks, work, logs)'
+            }
+
+        try:
+            path = Path(file_path)
+            if not path.exists():
+                return {
+                    'success': False,
+                    'error': f'File not found: {file_path}'
+                }
+
+            if not path.is_file():
+                return {
+                    'success': False,
+                    'error': f'Path is not a file: {file_path}'
+                }
+
+            content = path.read_text(encoding=encoding)
+            file_size = path.stat().st_size
+
+            return {
+                'success': True,
+                'path': str(path.resolve()),
+                'content': content,
+                'size': file_size,
+                'lines': len(content.splitlines())
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Failed to read file: {str(e)}'
+            }
+
+    async def _file_write(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Write content to file"""
+        file_path = args.get('path')
+        content = args.get('content')
+        encoding = args.get('encoding', 'utf-8')
+        create_dirs = args.get('create_dirs', True)
+
+        if not self._is_path_allowed(file_path):
+            return {
+                'success': False,
+                'error': f'Access denied: Path {file_path} is not in allowed directories (k8s-repo, runbooks, work)'
+            }
+
+        try:
+            path = Path(file_path)
+
+            # Create parent directories if requested
+            if create_dirs:
+                path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write content to file
+            path.write_text(content, encoding=encoding)
+            file_size = path.stat().st_size
+
+            return {
+                'success': True,
+                'path': str(path.resolve()),
+                'size': file_size,
+                'lines': len(content.splitlines()),
+                'message': f'Successfully wrote {file_size} bytes to {file_path}'
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Failed to write file: {str(e)}'
+            }
+
+    async def _file_list(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """List files in directory"""
+        dir_path = args.get('path')
+        pattern = args.get('pattern', '*')
+        recursive = args.get('recursive', False)
+
+        if not self._is_path_allowed(dir_path):
+            return {
+                'success': False,
+                'error': f'Access denied: Path {dir_path} is not in allowed directories'
+            }
+
+        try:
+            path = Path(dir_path)
+            if not path.exists():
+                return {
+                    'success': False,
+                    'error': f'Directory not found: {dir_path}'
+                }
+
+            if not path.is_dir():
+                return {
+                    'success': False,
+                    'error': f'Path is not a directory: {dir_path}'
+                }
+
+            # List files
+            if recursive:
+                files = [str(p.relative_to(path)) for p in path.rglob(pattern)]
+            else:
+                files = [p.name for p in path.glob(pattern)]
+
+            files.sort()
+
+            return {
+                'success': True,
+                'path': str(path.resolve()),
+                'files': files,
+                'count': len(files),
+                'recursive': recursive,
+                'pattern': pattern
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Failed to list directory: {str(e)}'
+            }
+
+    async def _file_delete(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Delete a file with safety checks"""
+        file_path = args.get('path')
+        confirm = args.get('confirm', False)
+
+        if not confirm:
+            return {
+                'success': False,
+                'error': 'Deletion not confirmed. Set confirm=true to delete the file.'
+            }
+
+        if not self._is_path_allowed(file_path):
+            return {
+                'success': False,
+                'error': f'Access denied: Path {file_path} is not in allowed directories'
+            }
+
+        try:
+            path = Path(file_path)
+            if not path.exists():
+                return {
+                    'success': False,
+                    'error': f'File not found: {file_path}'
+                }
+
+            if not path.is_file():
+                return {
+                    'success': False,
+                    'error': f'Path is not a file: {file_path}. Use appropriate tool to delete directories.'
+                }
+
+            # Get file info before deletion
+            file_size = path.stat().st_size
+            file_name = path.name
+
+            # Delete the file
+            path.unlink()
+
+            return {
+                'success': True,
+                'path': str(file_path),
+                'message': f'Successfully deleted {file_name} ({file_size} bytes)'
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Failed to delete file: {str(e)}'
+            }
+
+    async def _file_exists(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Check if file or directory exists"""
+        file_path = args.get('path')
+
+        if not self._is_path_allowed(file_path):
+            return {
+                'success': False,
+                'error': f'Access denied: Path {file_path} is not in allowed directories'
+            }
+
+        try:
+            path = Path(file_path)
+            exists = path.exists()
+
+            return {
+                'success': True,
+                'path': str(path),
+                'exists': exists,
+                'is_file': path.is_file() if exists else False,
+                'is_dir': path.is_dir() if exists else False
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Failed to check path: {str(e)}'
+            }
+
+    async def _file_info(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Get file or directory metadata"""
+        file_path = args.get('path')
+
+        if not self._is_path_allowed(file_path):
+            return {
+                'success': False,
+                'error': f'Access denied: Path {file_path} is not in allowed directories'
+            }
+
+        try:
+            path = Path(file_path)
+            if not path.exists():
+                return {
+                    'success': False,
+                    'error': f'Path not found: {file_path}'
+                }
+
+            stat_info = path.stat()
+
+            info = {
+                'success': True,
+                'path': str(path.resolve()),
+                'name': path.name,
+                'is_file': path.is_file(),
+                'is_dir': path.is_dir(),
+                'is_symlink': path.is_symlink(),
+                'size': stat_info.st_size,
+                'size_mb': round(stat_info.st_size / (1024 * 1024), 2),
+                'created': datetime.fromtimestamp(stat_info.st_ctime).isoformat(),
+                'modified': datetime.fromtimestamp(stat_info.st_mtime).isoformat(),
+                'accessed': datetime.fromtimestamp(stat_info.st_atime).isoformat(),
+                'permissions': oct(stat_info.st_mode)[-3:]
+            }
+
+            # Add line count for text files
+            if path.is_file() and path.suffix in ['.txt', '.md', '.yaml', '.yml', '.json', '.py', '.sh']:
+                try:
+                    content = path.read_text()
+                    info['lines'] = len(content.splitlines())
+                except Exception:
+                    pass
+
+            return info
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Failed to get file info: {str(e)}'
+            }
+
     async def handle_resources_list(self, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """Handle resources/list request"""
         return {
@@ -857,53 +1354,65 @@ class MCPServer:
     
     async def process_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Process incoming MCP message"""
+        start_time = datetime.utcnow()
+
         if not MCPMessage.validate_message(message):
             return MCPMessage.create_response(
                 message.get("id", 0),
                 error={"code": -32600, "message": "Invalid Request"}
             )
-        
+
         method = message.get("method")
         message_id = message.get("id")
         params = message.get("params", {})
-        
+        result = None
+        error = None
+
         try:
             if method == "initialize":
                 result = await self.handle_initialize(params)
-                return MCPMessage.create_response(message_id, result)
-            
+                response = MCPMessage.create_response(message_id, result)
+
             elif method == "tools/list":
                 result = await self.handle_tools_list(params)
-                return MCPMessage.create_response(message_id, result)
-            
+                response = MCPMessage.create_response(message_id, result)
+
             elif method == "tools/call":
                 result = await self.handle_tools_call(params)
-                return MCPMessage.create_response(message_id, result)
-            
+                response = MCPMessage.create_response(message_id, result)
+
             elif method == "resources/list":
                 result = await self.handle_resources_list(params)
-                return MCPMessage.create_response(message_id, result)
-            
+                response = MCPMessage.create_response(message_id, result)
+
             elif method == "resources/read":
                 result = await self.handle_resources_read(params)
-                return MCPMessage.create_response(message_id, result)
-            
+                response = MCPMessage.create_response(message_id, result)
+
             elif method == "notifications/cancelled":
                 await self.handle_notification(method, params)
-                return None  # Notifications don't have responses
-            
+                response = None  # Notifications don't have responses
+
             else:
-                return MCPMessage.create_response(
-                    message_id,
-                    error={"code": -32601, "message": f"Method not found: {method}"}
-                )
-        
+                error = {"code": -32601, "message": f"Method not found: {method}"}
+                response = MCPMessage.create_response(message_id, error=error)
+
         except Exception as e:
             logger.error(f"Error processing message: {e}")
-            return MCPMessage.create_response(
-                message_id,
-                error={"code": -32603, "message": f"Internal error: {str(e)}"}
-            )
+            error = {"code": -32603, "message": f"Internal error: {str(e)}"}
+            response = MCPMessage.create_response(message_id, error=error)
+
+        # Log the MCP call
+        duration = (datetime.utcnow() - start_time).total_seconds()
+        asyncio.create_task(self.call_logger.log_call(
+            method=method,
+            params=params,
+            result=result,
+            error=error,
+            duration=duration
+        ))
+
+        return response
 
 
 class MCPWebSocketHandler:
@@ -958,23 +1467,30 @@ class MCPWebSocketHandler:
 
 class MCPHTTPServer:
     """HTTP Server with MCP protocol support"""
-    
+
     def __init__(self):
         self.mcp_server = MCPServer()
         self.ws_handler = MCPWebSocketHandler(self.mcp_server)
         self.app = web.Application()
+        self.cleanup_task = None
         self.setup_routes()
-    
+        self.app.on_startup.append(self.startup)
+        self.app.on_cleanup.append(self.cleanup)
+
     def setup_routes(self):
         """Setup HTTP routes"""
         # MCP WebSocket endpoint
         self.app.router.add_get('/mcp', self.ws_handler.websocket_handler)
-        
+
         # Health check endpoint
         self.app.router.add_get('/health', self.handle_health)
-        
+
         # MCP over HTTP endpoint (for testing)
         self.app.router.add_post('/mcp/http', self.handle_http_mcp)
+
+        # Log management endpoints
+        self.app.router.add_get('/logs/mcp/stats', self.handle_log_stats)
+        self.app.router.add_post('/logs/mcp/cleanup', self.handle_log_cleanup)
     
     async def handle_health(self, request):
         """Health check endpoint"""
@@ -990,18 +1506,81 @@ class MCPHTTPServer:
         try:
             data = await request.json()
             response = await self.mcp_server.process_message(data)
-            
+
             if response:
                 return web.json_response(response)
             else:
                 return web.json_response({'status': 'notification_processed'})
-        
+
         except Exception as e:
             logger.error(f"HTTP MCP error: {e}")
             return web.json_response({
                 'error': str(e)
             }, status=500)
-    
+
+    async def handle_log_stats(self, request):
+        """Get MCP call log statistics"""
+        try:
+            stats = self.mcp_server.call_logger.get_log_stats()
+            return web.json_response(stats)
+        except Exception as e:
+            logger.error(f"Failed to get log stats: {e}")
+            return web.json_response({
+                'error': str(e)
+            }, status=500)
+
+    async def handle_log_cleanup(self, request):
+        """Manually trigger log cleanup"""
+        try:
+            await self.mcp_server.call_logger.cleanup_old_logs()
+            stats = self.mcp_server.call_logger.get_log_stats()
+            return web.json_response({
+                'status': 'cleanup_completed',
+                'stats': stats
+            })
+        except Exception as e:
+            logger.error(f"Failed to cleanup logs: {e}")
+            return web.json_response({
+                'error': str(e)
+            }, status=500)
+
+    async def background_log_cleanup(self):
+        """Background task to cleanup old logs daily"""
+        while True:
+            try:
+                # Run cleanup every 24 hours
+                await asyncio.sleep(86400)  # 24 hours
+                logger.info("Running scheduled MCP log cleanup...")
+                await self.mcp_server.call_logger.cleanup_old_logs()
+            except asyncio.CancelledError:
+                logger.info("Background log cleanup task cancelled")
+                break
+            except Exception as e:
+                logger.error(f"Error in background log cleanup: {e}")
+
+    async def startup(self, app):
+        """Run tasks on server startup"""
+        logger.info("Running startup tasks...")
+
+        # Initial log cleanup
+        await self.mcp_server.call_logger.cleanup_old_logs()
+
+        # Start background cleanup task
+        self.cleanup_task = asyncio.create_task(self.background_log_cleanup())
+        logger.info("Background log cleanup task started")
+
+    async def cleanup(self, app):
+        """Cleanup tasks on server shutdown"""
+        logger.info("Running cleanup tasks...")
+
+        # Cancel background cleanup task
+        if self.cleanup_task:
+            self.cleanup_task.cancel()
+            try:
+                await self.cleanup_task
+            except asyncio.CancelledError:
+                pass
+
     def run(self):
         """Run the MCP server"""
         port = int(os.getenv('MCP_SERVER_PORT', '8080'))
