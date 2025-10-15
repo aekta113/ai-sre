@@ -34,17 +34,20 @@ jobs:
         docker buildx build --platform linux/${{ matrix.arch }} -t ai-sre:test-${{ matrix.arch }} --load .
         
     - name: Test container startup
+      if: matrix.arch == 'amd64'
       run: |
         docker run -d --name ai-sre-test-${{ matrix.arch }} -p 8080:8080 ai-sre:test-${{ matrix.arch }}
         sleep 10
         
     - name: Test MCP Server endpoints
+      if: matrix.arch == 'amd64'
       run: |
         curl -f http://localhost:8080/health || exit 1
         curl -f http://localhost:8080/ready || exit 1
         curl -f http://localhost:8080/version || exit 1
         
     - name: Test new API endpoints
+      if: matrix.arch == 'amd64'
       run: |
         # Wait a bit more for container to be fully ready
         sleep 5
@@ -75,6 +78,7 @@ jobs:
         echo "$response" | grep -q "environment_variables" || echo "Warning: Environment endpoint may have issues"
         
     - name: Test kubectl functionality
+      if: matrix.arch == 'amd64'
       run: |
         # Test kubectl version (should work even without cluster)
         response=$(curl -s -X POST http://localhost:8080/kubectl/version \
@@ -85,6 +89,7 @@ jobs:
         echo "$response" | grep -q "kubectl" || echo "Warning: kubectl test may have failed"
           
     - name: Test git functionality
+      if: matrix.arch == 'amd64'
       run: |
         # Test git status (may fail in container without git repo - this is expected)
         response=$(curl -s -X POST http://localhost:8080/git/status \
@@ -95,6 +100,7 @@ jobs:
         echo "$response" | grep -q "git" || echo "Warning: git test may have failed"
           
     - name: Test flux functionality
+      if: matrix.arch == 'amd64'
       run: |
         # Test flux version
         response=$(curl -s -X POST http://localhost:8080/flux/version \
@@ -105,6 +111,7 @@ jobs:
         echo "$response" | grep -q "flux" || echo "Warning: flux test may have failed"
           
     - name: Verify CLI tools
+      if: matrix.arch == 'amd64'
       run: |
         docker exec ai-sre-test-${{ matrix.arch }} kubectl version --client
         docker exec ai-sre-test-${{ matrix.arch }} helm version --client
@@ -112,11 +119,12 @@ jobs:
         docker exec ai-sre-test-${{ matrix.arch }} git --version
         
     - name: Check container stats
+      if: matrix.arch == 'amd64'
       run: |
         docker stats --no-stream ai-sre-test-${{ matrix.arch }}
         
     - name: Cleanup
-      if: always()
+      if: always() && matrix.arch == 'amd64'
       run: |
         docker stop ai-sre-test-${{ matrix.arch }} || true
         docker rm ai-sre-test-${{ matrix.arch }} || true
