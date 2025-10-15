@@ -1,0 +1,240 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-sre
+  labels:
+    name: ai-sre
+    app: ai-sre
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-sre
+  namespace: ai-sre
+  labels:
+    app: ai-sre
+    component: mcp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-sre
+  template:
+    metadata:
+      labels:
+        app: ai-sre
+        component: mcp-server
+    spec:
+      serviceAccountName: ai-sre
+      containers:
+      - name: ai-sre
+        image: ai-sre:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: MCP_SERVER_PORT
+          value: "8080"
+        - name: AGENT_LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: ai-sre-config
+              key: AGENT_LOG_LEVEL
+        - name: SOPS_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: ai-sre-config
+              key: SOPS_ENABLED
+        - name: PROMETHEUS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: ai-sre-config
+              key: PROMETHEUS_URL
+        - name: ALERTMANAGER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: ai-sre-config
+              key: ALERTMANAGER_URL
+        # Add more environment variables as needed
+        envFrom:
+        - configMapRef:
+            name: ai-sre-config
+        - secretRef:
+            name: ai-sre-secrets
+        volumeMounts:
+        - name: storage
+          mountPath: /app/storage
+        - name: runbooks
+          mountPath: /app/runbooks
+        - name: logs
+          mountPath: /app/logs
+        - name: cache
+          mountPath: /app/cache
+        - name: work
+          mountPath: /app/work
+        - name: kubeconfig
+          mountPath: /root/.kube
+          readOnly: true
+        - name: config-file
+          mountPath: /app/config/config.yaml
+          subPath: config.yaml
+          readOnly: true
+        - name: storage-config
+          mountPath: /app/config/storage.yaml
+          subPath: storage.yaml
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: ai-sre-storage
+      - name: runbooks
+        persistentVolumeClaim:
+          claimName: ai-sre-runbooks
+      - name: logs
+        persistentVolumeClaim:
+          claimName: ai-sre-logs
+      - name: cache
+        persistentVolumeClaim:
+          claimName: ai-sre-cache
+      - name: work
+        emptyDir: {}
+      - name: kubeconfig
+        secret:
+          secretName: ai-sre-kubeconfig
+          defaultMode: 0400
+      - name: config-file
+        configMap:
+          name: ai-sre-config-file
+      - name: storage-config
+        configMap:
+          name: ai-sre-storage-config
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-sre
+  namespace: ai-sre
+  labels:
+    app: ai-sre
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: ai-sre
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-sre
+  namespace: ai-sre
+  labels:
+    app: ai-sre
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ai-sre
+  labels:
+    app: ai-sre
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints", "persistentvolumeclaims", "events", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses", "networkpolicies"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["policy"]
+  resources: ["podsecuritypolicies"]
+  verbs: ["use"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles", "rolebindings"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ai-sre
+  labels:
+    app: ai-sre
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ai-sre
+subjects:
+- kind: ServiceAccount
+  name: ai-sre
+  namespace: ai-sre
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ai-sre-netpol
+  namespace: ai-sre
+  labels:
+    app: ai-sre
+spec:
+  podSelector:
+    matchLabels:
+      app: ai-sre
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  - {}  # Allow all egress for now - can be restricted based on needs

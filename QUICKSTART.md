@@ -2,7 +2,7 @@
 
 ## Overview
 
-AI SRE is a lean, containerized CLI toolbox designed for Kubernetes cluster remediation. It acts as an execution environment controlled by N8N workflows, providing all necessary CLI tools for GitOps operations.
+AI SRE is a comprehensive, containerized CLI toolbox designed for Kubernetes cluster remediation with AI-powered operations. It provides a lightweight MCP (Model Context Protocol) server that exposes Kubernetes, Git, Flux, and diagnostic CLI operations through a clean REST API, designed to be orchestrated by external systems like N8N.
 
 ## Architecture
 
@@ -13,17 +13,22 @@ AI SRE is a lean, containerized CLI toolbox designed for Kubernetes cluster reme
 └─────────────┘     └──────────────┘     └────────────────┘
                            │                      │
                            │                      ├── MCP Server
-                    ┌──────▼──────┐              ├── kubectl
+                    ┌──────▼──────┐              ├── kubectl + CLI tools
                     │  RAG/Vector │              ├── git/gh
                     │    Store    │              ├── flux
-                    └─────────────┘              └── helm
+                    └─────────────┘              ├── sops + secrets
+                                                 ├── monitoring APIs
+                                                 └── AI learning
 ```
 
 ### Key Components:
 
 1. **N8N (External)**: Handles all orchestration, alert processing, RAG/vector store, and Telegram integration
-2. **AI SRE Container**: Provides CLI tools and MCP Server for command execution
+2. **AI SRE Container**: Provides CLI tools, MCP Server, secrets management, and AI learning capabilities
 3. **MCP Server**: REST API interface for N8N to execute commands and get structured responses
+4. **CLI Tools**: Comprehensive set of diagnostic tools (sed, curl, cat, tree, find, grep, etc.)
+5. **Secrets Management**: SOPS with AGE encryption for secure secret handling
+6. **Configuration Management**: Flexible tool activation/deactivation via ConfigMaps
 
 ## Quick Start
 
@@ -43,19 +48,90 @@ nano .env
 
 ### 2. Configure Environment
 
-Required environment variables in `.env`:
+#### Environment Variables (.env)
+
+Create a `.env` file from the template:
 
 ```bash
-# GitHub Configuration
-GITHUB_TOKEN=your_github_token
-GITHUB_REPO=your-org/k8s-configs
+cp .env.template .env
+nano .env
+```
 
-# Kubernetes Configuration
-KUBECONFIG=/app/.kube/config
-KUBE_CONTEXT=your-context
+**Required Configuration:**
 
-# Flux Configuration
+```bash
+# =============================================================================
+# SERVER CONFIGURATION
+# =============================================================================
+MCP_SERVER_PORT=8080
+AGENT_LOG_LEVEL=INFO
+AGENT_WORKDIR=/app/work
+COMMAND_TIMEOUT=60
+DRY_RUN=false
+
+# =============================================================================
+# KUBERNETES CONFIGURATION
+# =============================================================================
+KUBE_CONTEXT=
+KUBE_NAMESPACE=default
+KUBECONFIG_PATH=/root/.kube/config
+
+# =============================================================================
+# FLUX CONFIGURATION
+# =============================================================================
 FLUX_NAMESPACE=flux-system
+GITHUB_REPO=https://github.com/your-org/your-repo.git
+LOCAL_REPO_PATH=/app/k8s-repo
+
+# =============================================================================
+# SECRETS MANAGEMENT
+# =============================================================================
+SOPS_ENABLED=true
+SOPS_AGE_KEY=age1...  # Your AGE private key
+AGE_KEY_PATH=/app/secrets/age-key.txt
+
+# =============================================================================
+# SERVICE ENDPOINTS
+# =============================================================================
+PROMETHEUS_URL=http://prometheus:9090
+ALERTMANAGER_URL=http://alertmanager:9093
+GRAFANA_URL=http://grafana:3000
+KUMA_URL=http://kuma:5681
+# ... (see .env.template for complete list)
+```
+
+#### Secrets Configuration
+
+**Generate AGE Key for SOPS:**
+
+```bash
+# Generate AGE key pair
+age-keygen -o age-key.txt
+
+# The output will show:
+# Public key: age1...
+# Private key: AGE-SECRET-KEY-1...
+
+# Add the private key to your .env file
+echo "SOPS_AGE_KEY=AGE-SECRET-KEY-1..." >> .env
+```
+
+**Configure GitHub Token:**
+
+```bash
+# Create GitHub Personal Access Token with repo access
+# Add to .env:
+GITHUB_TOKEN=ghp_your_token_here
+```
+
+**Configure Kubernetes Access:**
+
+```bash
+# Copy your kubeconfig
+cp ~/.kube/config ./kubeconfig
+
+# Or set context if using existing kubeconfig
+KUBE_CONTEXT=your-cluster-context
 ```
 
 ### 3. Build and Run
@@ -89,6 +165,203 @@ curl -X POST http://localhost:8080/kubectl/get \
 curl -X POST http://localhost:8080/git/status \
   -H "Content-Type: application/json" \
   -d '{}'
+
+# Test CLI tools
+curl -X POST http://localhost:8080/cli/grep \
+  -H "Content-Type: application/json" \
+  -d '{"args": ["-r", "error", "/var/log"], "flags": {"i": true}}'
+
+# Test SOPS encryption
+curl -X POST http://localhost:8080/cli/sops \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "encrypt",
+    "data": "apiVersion: v1\nkind: Secret\nmetadata:\n  name: my-secret\nstringData:\n  password: secret123"
+  }'
+
+# Test configuration
+curl http://localhost:8080/config
+curl http://localhost:8080/cli/tools
+```
+
+### 5. Kubernetes Deployment
+
+#### Prerequisites
+
+```bash
+# Create namespace
+kubectl create namespace ai-sre
+
+# Apply storage configuration
+kubectl apply -f k8s-repo/storage.yaml
+
+# Apply configuration and secrets
+kubectl apply -f k8s-repo/configmap.yaml
+```
+
+#### Deploy AI SRE
+
+```bash
+# Deploy the complete application
+kubectl apply -f k8s-repo/deployment.yaml
+
+# Check deployment status
+kubectl get pods -n ai-sre
+kubectl get pvc -n ai-sre
+kubectl get svc -n ai-sre
+
+# Check runbook storage
+kubectl exec -it deployment/ai-sre -n ai-sre -- ls -la /app/runbooks/
+
+# Port forward for testing
+kubectl port-forward svc/ai-sre 8080:8080 -n ai-sre
+```
+
+#### Storage Configuration
+
+The deployment includes persistent storage for:
+
+- **Runbooks Storage** (5Gi): Static and dynamic runbooks
+- **Logs Storage** (20Gi): Application and execution logs  
+- **Cache Storage** (2Gi): Cached data and search indexes
+- **Main Storage** (10Gi): General application data
+
+```bash
+# Check storage usage
+kubectl exec -it deployment/ai-sre -n ai-sre -- df -h
+
+# View storage configuration
+kubectl describe pvc -n ai-sre
+```
+
+## Configuration Management
+
+### Tool Configuration
+
+The AI SRE agent supports flexible tool activation/deactivation through configuration:
+
+**Available Tool Categories:**
+- `text`: sed, grep, awk, sort, uniq, wc, head, tail, tr, cut, paste, diff
+- `network`: curl, netstat, ss, tcpdump, ping, nslookup, dig
+- `filesystem`: tree, find, cat, less, more
+- `system`: ps, top, df, du, free, lsof
+- `archive`: tar, gzip
+- `json`: jq
+- `yaml`: yq
+- `encoding`: base64
+- `security`: sops, age
+- `kubernetes`: kustomize, helm, k9s, kubectx, kubens
+
+**Configuration Methods:**
+
+1. **Environment Variables:**
+```bash
+# Enable specific categories
+TOOLS_ENABLED_CATEGORIES=text,network,security
+
+# Disable specific tools
+TOOLS_DISABLED=tcpdump,lsof
+
+# Enable specific tools (overrides categories)
+TOOLS_ENABLED=sops,age,curl
+```
+
+2. **ConfigMap (Kubernetes):**
+```bash
+# Apply configuration
+kubectl apply -f k8s-repo/configmap.yaml
+
+# Update configuration
+kubectl edit configmap ai-sre-config -n ai-sre
+```
+
+3. **Configuration File:**
+```bash
+# Edit config file
+nano config/config.yaml
+
+# Reload configuration
+curl -X POST http://localhost:8080/config/reload
+```
+
+### Secrets Management
+
+#### SOPS with AGE Encryption
+
+**Encrypt Secrets:**
+```bash
+# Create a secret file
+cat > secret.yaml << EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+stringData:
+  password: secret123
+  token: abc123
+EOF
+
+# Encrypt with SOPS
+curl -X POST http://localhost:8080/cli/sops \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "encrypt",
+    "file": "secret.yaml"
+  }'
+```
+
+**Decrypt Secrets:**
+```bash
+# Decrypt secret
+curl -X POST http://localhost:8080/cli/sops \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "decrypt",
+    "file": "secret.enc.yaml"
+  }'
+```
+
+**Inline Encryption/Decryption:**
+```bash
+# Encrypt inline data
+curl -X POST http://localhost:8080/cli/sops \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "encrypt",
+    "data": "password: secret123"
+  }'
+
+# Decrypt inline data
+curl -X POST http://localhost:8080/cli/sops \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "decrypt",
+    "data": "ENC[AES256_GCM,data:...]"
+  }'
+```
+
+#### Kubernetes Secrets
+
+**Create Secret with SOPS:**
+```bash
+# Apply encrypted secret to cluster
+curl -X POST http://localhost:8080/kubectl/apply \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file": "secret.enc.yaml",
+    "namespace": "default"
+  }'
+```
+
+**Update Secret:**
+```bash
+# Edit secret
+curl -X POST http://localhost:8080/cli/sops \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "edit",
+    "file": "secret.enc.yaml"
+  }'
 ```
 
 ## MCP Server API
@@ -144,6 +417,219 @@ Example:
   "name": "my-app",
   "namespace": "flux-system"
 }
+```
+
+### CLI Tools Operations
+
+```http
+POST /cli/{tool}
+```
+
+**Available Tools:**
+- `sed`, `curl`, `cat`, `tree`, `find`, `grep`, `awk`, `sort`, `uniq`, `wc`
+- `head`, `tail`, `less`, `more`, `jq`, `yq`, `base64`, `tr`, `cut`, `paste`
+- `diff`, `tar`, `gzip`, `ps`, `top`, `df`, `du`, `free`, `netstat`, `ss`
+- `lsof`, `tcpdump`, `ping`, `nslookup`, `dig`, `sops`, `age`
+- `kustomize`, `helm`, `k9s`, `kubectx`, `kubens`
+
+**Examples:**
+
+```bash
+# Grep with flags
+curl -X POST http://localhost:8080/cli/grep \
+  -H "Content-Type: application/json" \
+  -d '{
+    "args": ["-r", "error", "/var/log"],
+    "flags": {"i": true, "n": true}
+  }'
+
+# Find files
+curl -X POST http://localhost:8080/cli/find \
+  -H "Content-Type: application/json" \
+  -d '{
+    "args": ["/app", "-name", "*.yaml", "-type", "f"]
+  }'
+
+# Process list
+curl -X POST http://localhost:8080/cli/ps \
+  -H "Content-Type: application/json" \
+  -d '{
+    "flags": {"aux": true}
+  }'
+
+# JSON processing
+curl -X POST http://localhost:8080/cli/jq \
+  -H "Content-Type: application/json" \
+  -d '{
+    "args": [".items[].metadata.name"],
+    "input": "{\"items\":[{\"metadata\":{\"name\":\"pod1\"}}]}"
+  }'
+
+# Chained commands (pipe-like)
+curl -X POST http://localhost:8080/cli/chain \
+  -H "Content-Type: application/json" \
+  -d '{
+    "commands": [
+      {"tool": "cat", "args": ["/var/log/syslog"]},
+      {"tool": "grep", "args": ["error"]},
+      {"tool": "wc", "args": ["-l"]}
+    ]
+  }'
+```
+
+### SOPS Operations
+
+```http
+POST /cli/sops
+```
+
+**Operations:**
+- `encrypt`: Encrypt files or data
+- `decrypt`: Decrypt files or data
+- `edit`: Edit encrypted files
+- `keys`: Show encryption keys
+- `version`: Show SOPS version
+
+**Examples:**
+
+```bash
+# Encrypt file
+curl -X POST http://localhost:8080/cli/sops \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "encrypt",
+    "file": "secret.yaml"
+  }'
+
+# Decrypt inline data
+curl -X POST http://localhost:8080/cli/sops \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "decrypt",
+    "data": "ENC[AES256_GCM,data:...]"
+  }'
+
+# Edit encrypted file
+curl -X POST http://localhost:8080/cli/sops \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "edit",
+    "file": "secret.enc.yaml"
+  }'
+```
+
+### Configuration Operations
+
+```http
+GET /config              # Get current configuration
+POST /config/reload      # Reload configuration
+GET /config/tools        # Get tool configuration
+GET /cli/tools          # List available tools
+```
+
+### Service Monitoring
+
+```http
+GET /services                    # List all services
+GET /services/{service}         # Check service health
+GET /prometheus/query           # Query Prometheus
+GET /alertmanager/alerts        # Get alerts
+GET /grafana/dashboards         # Get dashboards
+GET /kuma/mesh                 # Get mesh status
+GET /jaeger/traces             # Query traces
+GET /loki/query                # Query logs
+```
+
+### System Operations
+
+```http
+GET /health          # Health check
+GET /ready          # Readiness check
+GET /version        # Version information
+GET /env           # Environment variables
+```
+
+## Runbook System
+
+### Overview
+
+The AI SRE runbook system provides intelligent incident response with both static and dynamic runbooks:
+
+- **Static Runbooks**: Core knowledge base (`agent.md`) with standard procedures
+- **Dynamic Runbooks**: AI-generated runbooks based on actual incidents
+- **Pattern Recognition**: Learns from successful resolutions
+- **Persistent Storage**: All runbooks stored in persistent volumes
+
+### Storage Structure
+
+```
+/app/runbooks/
+├── static/                    # Static runbooks (agent.md, templates)
+│   ├── agent.md              # Main knowledge base
+│   ├── templates/            # Runbook templates
+│   └── best-practices/       # Best practices documentation
+├── dynamic/                   # AI-generated runbooks
+│   ├── incidents/            # Incident-specific runbooks
+│   ├── patterns/             # Learned patterns
+│   └── resolutions/          # Successful resolutions
+├── cache/                    # Cached runbook data
+└── backups/                  # Backup storage
+```
+
+### Runbook Operations
+
+```bash
+# Search runbooks
+curl "http://localhost:8080/runbooks/search?q=pod%20crash&type=static&severity=high"
+
+# Execute runbook with context
+curl -X POST http://localhost:8080/runbooks/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "runbook_id": "pod-crash-001",
+    "context": {
+      "namespace": "production",
+      "pod_name": "my-app-7d4b8c9f-x2k9m"
+    },
+    "parameters": {
+      "auto_execute": false,
+      "dry_run": true
+    }
+  }'
+
+# Learn from incident data
+curl -X POST http://localhost:8080/runbooks/learn \
+  -H "Content-Type: application/json" \
+  -d '{
+    "incident_data": {
+      "type": "pod_crash",
+      "diagnosis": ["memory_limit_exceeded"],
+      "resolution": ["increase_memory_limit"],
+      "success": true,
+      "duration": "5m"
+    }
+  }'
+
+# Get learned patterns
+curl http://localhost:8080/runbooks/patterns
+
+# Check runbook system health
+curl http://localhost:8080/runbooks/health
+```
+
+### Storage Management
+
+```bash
+# Check storage usage
+curl http://localhost:8080/storage/usage
+
+# Trigger backup
+curl http://localhost:8080/storage/backup
+
+# Clean up old files
+curl -X POST http://localhost:8080/storage/cleanup \
+  -H "Content-Type: application/json" \
+  -d '{"retention_days": 30}'
 ```
 
 ## N8N Integration

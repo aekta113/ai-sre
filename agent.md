@@ -1,6 +1,18 @@
 # AI SRE Knowledge Base
 
-This document serves as a reference for N8N workflows. It contains runbooks for common Kubernetes issues and their remediation steps.
+This document serves as a comprehensive reference for AI-powered Site Reliability Engineering workflows. It contains runbooks for common Kubernetes, Flux, and infrastructure issues with their automated remediation steps.
+
+## 🤖 AI Agent Capabilities
+
+The AI SRE agent can automatically:
+- Diagnose Kubernetes cluster issues
+- Execute remediation workflows
+- Update GitOps repositories
+- Manage Flux deployments
+- Monitor system health
+- Learn from incident resolutions
+
+## 📊 Alert Categories
 
 ## Alert: PodCrashLoopBackOff
 
@@ -126,6 +138,38 @@ This document serves as a reference for N8N workflows. It contains runbooks for 
 - **Manual cert**: Update certificate secret
   - `kubectl create secret tls <name> --cert=<cert> --key=<key> --dry-run=client -o yaml | kubectl apply -f -`
 
+## Alert: FluxReconciliationFailed
+
+**Description**: Flux GitOps reconciliation has failed for a source or workload.
+
+**Diagnosis Steps**:
+1. Check Flux sources: `flux get sources all -A`
+2. Check Flux workloads: `flux get kustomizations -A`
+3. Check Flux events: `flux get events -A`
+4. Check Git repository connectivity
+
+**Common Causes & Fixes**:
+- **Git authentication**: Update Git credentials
+  - `flux create secret git <name> --url=<repo> --username=<user> --password=<token>`
+- **Branch/Path issues**: Verify repository path exists
+  - Check Git repository structure
+- **Resource conflicts**: Resolve Kubernetes resource conflicts
+  - `kubectl get events -A --sort-by=.metadata.creationTimestamp`
+
+## Alert: FluxSourceNotReady
+
+**Description**: Flux Git source is not ready or has sync issues.
+
+**Diagnosis Steps**:
+1. Check source status: `flux get sources git -A`
+2. Check source events: `flux get events --kind GitRepository -A`
+3. Verify repository access and permissions
+
+**Common Causes & Fixes**:
+- **Network issues**: Check cluster network connectivity
+- **Authentication**: Verify Git credentials are valid
+- **Repository moved**: Update source URL if repository was moved
+
 ## Alert: JobFailed
 
 **Description**: A Kubernetes Job has failed.
@@ -141,19 +185,87 @@ This document serves as a reference for N8N workflows. It contains runbooks for 
 - **Configuration error**: Fix job spec and rerun
 - **Resource constraints**: Increase resources or adjust parallelism
 
-## Learning Section
+## 🤖 AI Learning Section
 
-> This section is automatically updated by the AI agent when new issues are resolved
+> This section is automatically updated by the AI agent when new issues are resolved and patterns are learned
 
 ### Recent Resolutions
 
-<!-- New resolutions will be added here -->
+<!-- New resolutions will be added here by the AI agent -->
 
-## Best Practices
+### Pattern Recognition
 
+The AI agent learns from:
+- Successful remediation workflows
+- Common failure patterns
+- Resource usage trends
+- GitOps reconciliation issues
+- Performance bottlenecks
+
+### Auto-Generated Insights
+
+- **Trend Analysis**: Identifies recurring issues across clusters
+- **Predictive Alerts**: Proactive monitoring based on learned patterns
+- **Optimization Suggestions**: Resource allocation and performance improvements
+- **Workflow Enhancements**: Continuous improvement of remediation procedures
+
+## 📋 Best Practices
+
+### 🚨 Incident Response
 1. **Always check logs first** - Most issues are evident in logs
 2. **Verify recent changes** - Check Git history for recent deployments
 3. **Test in staging first** - If possible, reproduce and fix in staging
 4. **Document new issues** - Update this knowledge base with new patterns
 5. **Use dry-run** - Test kubectl commands with --dry-run when possible
 6. **Keep audit trail** - Log all remediation actions with timestamps
+
+### 🔄 GitOps & Flux
+7. **Source of Truth** - Always use Git repository as the source of truth
+8. **Atomic Changes** - Make atomic commits for easier rollbacks
+9. **Automated Testing** - Use CI/CD pipelines for validation
+10. **Immutable Infrastructure** - Never make manual changes to running systems
+11. **Monitoring Sync** - Monitor Flux reconciliation status continuously
+12. **Secret Management** - Use proper secret management (SOPS, Sealed Secrets)
+
+### 🏗️ Kubernetes Operations
+13. **Resource Limits** - Always set resource requests and limits
+14. **Health Checks** - Implement proper liveness and readiness probes
+15. **Namespace Isolation** - Use namespaces for logical separation
+16. **RBAC** - Implement proper role-based access control
+17. **Network Policies** - Use network policies for security
+18. **Backup Strategy** - Regular backups of critical data and configurations
+
+### 📊 Monitoring & Observability
+19. **Comprehensive Metrics** - Monitor application and infrastructure metrics
+20. **Log Aggregation** - Centralized logging for easier troubleshooting
+21. **Distributed Tracing** - Track requests across microservices
+22. **Alert Fatigue** - Avoid over-alerting, focus on actionable alerts
+23. **SLI/SLO Definition** - Define clear service level indicators and objectives
+24. **Incident Postmortems** - Learn from incidents to prevent recurrence
+
+## 🔧 AI Agent Configuration
+
+### Environment Variables
+```bash
+# Kubernetes Configuration
+KUBECONFIG_PATH=/path/to/kubeconfig
+KUBE_NAMESPACE=default
+
+# Flux Configuration  
+FLUX_NAMESPACE=flux-system
+GIT_REPOSITORY=https://github.com/org/repo
+
+# Monitoring
+PROMETHEUS_URL=http://prometheus:9090
+GRAFANA_URL=http://grafana:3000
+
+# AI Learning
+ENABLE_LEARNING=true
+PATTERN_RECOGNITION=true
+```
+
+### MCP Server Endpoints
+- `POST /ai/learn` - Record successful resolution
+- `GET /ai/patterns` - Retrieve learned patterns
+- `POST /ai/predict` - Get predictive insights
+- `GET /ai/insights` - Get optimization suggestions

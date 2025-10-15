@@ -1,0 +1,102 @@
+# AI SRE MCP Server Configuration
+# This file defines the runtime configuration for the AI SRE agent
+
+# =============================================================================
+# TOOL CONFIGURATION
+# =============================================================================
+tools:
+  # Tool categories to enable (all, text, network, filesystem, system, security, kubernetes, etc.)
+  enabled_categories:
+    - all
+  
+  # Specific tools to enable (overrides category settings)
+  enabled_tools: []
+  
+  # Specific tools to disable (overrides category settings)
+  disabled_tools:
+    - tcpdump  # Network monitoring tool - disable for security
+    - lsof     # System monitoring tool - disable for security
+
+# =============================================================================
+# SECRETS MANAGEMENT CONFIGURATION
+# =============================================================================
+secrets:
+  # SOPS (Secrets OPerationS) configuration
+  sops_enabled: true
+  
+  # AGE key configuration
+  age_key_path: /app/secrets/age-key.txt
+  
+  # HashiCorp Vault integration
+  vault_enabled: false
+  
+  # Sealed Secrets integration
+  sealed_secrets_enabled: false
+
+# =============================================================================
+# SECURITY CONFIGURATION
+# =============================================================================
+security:
+  # Commands explicitly allowed (empty means all are allowed)
+  allowed_commands: []
+  
+  # Commands explicitly blocked
+  blocked_commands:
+    - rm
+    - dd
+    - mkfs
+    - fdisk
+    - shutdown
+    - reboot
+    - halt
+  
+  # Require authentication for API access
+  require_authentication: false
+
+# =============================================================================
+# MONITORING CONFIGURATION
+# =============================================================================
+monitoring:
+  # Enable detailed logging
+  detailed_logging: true
+  
+  # Log level (DEBUG, INFO, WARNING, ERROR)
+  log_level: INFO
+  
+  # Enable metrics collection
+  metrics_enabled: true
+  
+  # Enable health checks
+  health_checks_enabled: true
+
+# =============================================================================
+# PERFORMANCE CONFIGURATION
+# =============================================================================
+performance:
+  # Command execution timeout (seconds)
+  command_timeout: 60
+  
+  # Maximum concurrent operations
+  max_concurrent_operations: 10
+  
+  # Enable command caching
+  enable_caching: false
+  
+  # Cache TTL (seconds)
+  cache_ttl: 300
+
+# =============================================================================
+# AI LEARNING CONFIGURATION
+# =============================================================================
+ai:
+  # Enable AI learning from incidents
+  learning_enabled: true
+  
+  # Enable pattern recognition
+  pattern_recognition: true
+  
+  # Enable predictive alerts
+  predictive_alerts: false
+  
+  # Learning data retention (days)
+  learning_retention_days: 90
