@@ -710,16 +710,17 @@ class MCPServer:
         self.app.router.add_get('/jaeger/traces', self.handle_jaeger_traces)
         self.app.router.add_get('/loki/query', self.handle_loki_query)
         
-        # Runbook endpoints
+        # Runbook endpoints (specific routes before parameterized ones)
         self.app.router.add_get('/runbooks/search', self.handle_runbook_search)
         self.app.router.add_post('/runbooks/execute', self.handle_runbook_execute)
         self.app.router.add_post('/runbooks/create', self.handle_runbook_create)
-        self.app.router.add_put('/runbooks/{id}', self.handle_runbook_update)
-        self.app.router.add_get('/runbooks/{id}', self.handle_runbook_get)
         self.app.router.add_post('/runbooks/learn', self.handle_runbook_learn)
         self.app.router.add_get('/runbooks/patterns', self.handle_runbook_patterns)
         self.app.router.add_get('/runbooks/executions', self.handle_runbook_executions)
         self.app.router.add_get('/runbooks/health', self.handle_runbook_health)
+        # Parameterized routes last
+        self.app.router.add_put('/runbooks/{id}', self.handle_runbook_update)
+        self.app.router.add_get('/runbooks/{id}', self.handle_runbook_get)
         
         # Storage endpoints
         self.app.router.add_get('/storage/usage', self.handle_storage_usage)
