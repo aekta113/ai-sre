@@ -19,6 +19,8 @@ jobs:
         exclude:
           - os: macos-latest
             arch: arm64  # GitHub doesn't support ARM64 macOS runners yet
+          - os: macos-latest
+            arch: amd64  # Docker not available on macOS runners
             
     steps:
     - name: Checkout code
@@ -29,7 +31,7 @@ jobs:
       
     - name: Build Docker image
       run: |
-        docker buildx build --platform linux/${{ matrix.arch }} -t ai-sre:test-${{ matrix.arch }} .
+        docker buildx build --platform linux/${{ matrix.arch }} -t ai-sre:test-${{ matrix.arch }} --load .
         
     - name: Test container startup
       run: |
