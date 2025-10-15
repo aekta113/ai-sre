@@ -1,12 +1,12 @@
 # AI SRE - Self-Healing Toolbox Container
-FROM alpine:3.19
+FROM alpine:3.20
 
 LABEL maintainer="AI-SRE Team"
 LABEL description="Lean CLI toolbox container for Kubernetes operations via N8N"
-LABEL version="1.0.0"
+LABEL version="2.0.2"
 
-# Install base system packages
-RUN apk add --no-cache \
+# Update package index and install base system packages
+RUN apk update && apk upgrade && apk add --no-cache \
     # Core utilities
     curl wget git openssh-client \
     bash zsh coreutils findutils \
@@ -18,10 +18,12 @@ RUN apk add --no-cache \
     # Network tools
     bind-tools netcat-openbsd \
     # SSL support for Helm
-    openssl
+    openssl \
+    # Security updates
+    ca-certificates
 
 # Install kubectl
-ARG KUBECTL_VERSION=v1.29.0
+ARG KUBECTL_VERSION=v1.31.0
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then ARCH="amd64"; fi && \
     if [ "$ARCH" = "aarch64" ]; then ARCH="arm64"; fi && \
@@ -31,14 +33,14 @@ RUN ARCH=$(uname -m) && \
     kubectl version --client
 
 # Install Helm
-ARG HELM_VERSION=v3.13.3
+ARG HELM_VERSION=v3.15.4
 RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
     && chmod 700 get_helm.sh \
     && VERIFY_CHECKSUM=false ./get_helm.sh --version ${HELM_VERSION} \
     && rm get_helm.sh
 
 # Install Flux CLI v2
-ARG FLUX_VERSION=2.2.2
+ARG FLUX_VERSION=2.3.0
 RUN curl -s https://fluxcd.io/install.sh | bash
 
 # Install GitHub CLI
@@ -61,8 +63,9 @@ RUN mkdir -p /app/src \
 COPY src/mcp_server_protocol.py /app/src/
 COPY scripts/entrypoint.sh /app/scripts/
 
-# Make scripts executable
-RUN chmod +x /app/scripts/*.sh
+# Make scripts executable and secure
+RUN chmod +x /app/scripts/*.sh && \
+    chmod 755 /app/src/mcp_server_protocol.py
 
 # Set working directory
 WORKDIR /app
@@ -70,7 +73,9 @@ WORKDIR /app
 # Create non-root user for running the application
 RUN addgroup -g 1000 aisre && \
     adduser -D -u 1000 -G aisre aisre && \
-    chown -R aisre:aisre /app
+    chown -R aisre:aisre /app && \
+    # Clean up package cache to reduce attack surface
+    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 # Switch to non-root user
 USER aisre
