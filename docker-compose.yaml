@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  ai-sre:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        KUBECTL_VERSION: v1.29.0
+        HELM_VERSION: v3.13.3
+        FLUX_VERSION: 2.2.2
+    image: ai-sre:latest
+    container_name: ai-sre
+    restart: unless-stopped
+    environment:
+      - AGENT_MODE=executor
+      - AGENT_LOG_LEVEL=${AGENT_LOG_LEVEL:-INFO}
+      - MCP_SERVER_PORT=${MCP_SERVER_PORT:-8080}
+    env_file:
+      - .env
+    volumes:
+      # Mount kubeconfig
+      - ${HOME}/.kube:/app/.kube:ro
+      
+      # Mount local repository for GitOps operations
+      - ./k8s-repo:/app/k8s-repo
+      
+      # Mount logs for debugging
+      - ./logs:/app/logs
+      
+      # Mount source code for development
+      - ./src:/app/src:ro
+      - ./scripts:/app/scripts:ro
+      
+      # Working directory for operations
+      - ./work:/app/work
+      
+      # SSH keys for Git operations (if using SSH)
+      - ${HOME}/.ssh:/home/aisre/.ssh:ro
+      
+    networks:
+      - ai-sre-network
+    ports:
+      - "8080:8080"  # MCP Server endpoint
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  ai-sre-network:
+    driver: bridge
+
+volumes:
+  ai-sre-data:

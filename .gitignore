@@ -1,0 +1,71 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Kubernetes config
+*.kubeconfig
+kubeconfig
+.kube/
+
+# SSH keys
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+.ssh/
+
+# Local directories
+k8s-repo/
+logs/
+work/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.DS_Store
+
+# Docker
+.dockerignore.local
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+*~
+
+# Build artifacts
+dist/
+build/
+*.tar.gz
+
+# Test files
+test-results/
+coverage/
+.coverage
+
+# N8N exports (may contain secrets)
+n8n-workflows/*.json.backup
+n8n-workflows/*-credentials.json
+
+# Helm charts
+*.tgz
+charts/*.tgz
