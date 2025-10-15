@@ -1,5 +1,6 @@
 # AI SRE - Self-Healing Toolbox Container
-FROM alpine:3.20
+# Multi-stage build for security
+FROM alpine:3.20 AS builder
 
 LABEL maintainer="AI-SRE Team"
 LABEL description="Lean CLI toolbox container for Kubernetes operations via N8N"
@@ -67,15 +68,46 @@ COPY scripts/entrypoint.sh /app/scripts/
 RUN chmod +x /app/scripts/*.sh && \
     chmod 755 /app/src/mcp_server_protocol.py
 
+# Final runtime stage - minimal Alpine image
+FROM alpine:3.20
+
+# Install only runtime dependencies
+RUN apk update && apk upgrade && apk add --no-cache \
+    python3 \
+    py3-aiohttp \
+    py3-yaml \
+    py3-dotenv \
+    ca-certificates \
+    && rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+
+# Copy binaries and scripts from builder stage
+COPY --from=builder /usr/local/bin/kubectl /usr/local/bin/
+COPY --from=builder /usr/local/bin/helm /usr/local/bin/
+COPY --from=builder /usr/local/bin/flux /usr/local/bin/
+COPY --from=builder /usr/local/bin/gh /usr/local/bin/
+COPY --from=builder /usr/bin/curl /usr/bin/
+COPY --from=builder /usr/bin/wget /usr/bin/
+COPY --from=builder /usr/bin/git /usr/bin/
+COPY --from=builder /usr/bin/jq /usr/bin/
+COPY --from=builder /usr/bin/yq /usr/bin/
+COPY --from=builder /usr/bin/bash /usr/bin/
+COPY --from=builder /usr/bin/grep /usr/bin/
+COPY --from=builder /usr/bin/sed /usr/bin/
+COPY --from=builder /usr/bin/awk /usr/bin/
+COPY --from=builder /usr/bin/tree /usr/bin/
+COPY --from=builder /usr/bin/find /usr/bin/
+COPY --from=builder /usr/bin/nc /usr/bin/
+
+# Copy application files from builder stage
+COPY --from=builder /app /app
+
 # Set working directory
 WORKDIR /app
 
 # Create non-root user for running the application
 RUN addgroup -g 1000 aisre && \
     adduser -D -u 1000 -G aisre aisre && \
-    chown -R aisre:aisre /app && \
-    # Clean up package cache to reduce attack surface
-    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+    chown -R aisre:aisre /app
 
 # Switch to non-root user
 USER aisre
