@@ -22,7 +22,13 @@ jobs:
       
     - name: Build image for security scan
       run: |
-        docker build -t ai-sre:security-scan .
+        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" =~ ^refs/tags/v ]]; then
+          echo "Release build - building for multiple platforms"
+          docker buildx build --platform linux/amd64,linux/arm64 -t ai-sre:security-scan .
+        else
+          echo "Non-release build - building for AMD64 only"
+          docker buildx build --platform linux/amd64 -t ai-sre:security-scan .
+        fi
         
     - name: Run Trivy vulnerability scanner (table format)
       uses: aquasecurity/trivy-action@master

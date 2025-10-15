@@ -1,0 +1,79 @@
+name: ARM Build Test
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  arm-build:
+    name: ARM64 Build Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Create ARM64 builder
+      run: |
+        docker buildx create --name arm-builder --platform linux/arm64 --use
+        docker buildx inspect --bootstrap
+        
+    - name: Build ARM64 image
+      run: |
+        docker buildx build \
+          --platform linux/arm64 \
+          --tag ai-sre:arm64-test \
+          --load \
+          .
+          
+    - name: Test ARM64 container
+      run: |
+        docker run -d --name ai-sre-arm-test -p 8080:8080 ai-sre:arm64-test
+        sleep 10
+        
+        # Test basic endpoints
+        curl -f http://localhost:8080/health || exit 1
+        curl -f http://localhost:8080/ready || exit 1
+        curl -f http://localhost:8080/version || exit 1
+        
+        # Test CLI tools
+        docker exec ai-sre-arm-test kubectl version --client
+        docker exec ai-sre-arm-test helm version --client
+        docker exec ai-sre-arm-test flux version --client
+        
+        echo "✅ ARM64 build and test successful"
+        
+    - name: Cleanup
+      if: always()
+      run: |
+        docker stop ai-sre-arm-test || true
+        docker rm ai-sre-arm-test || true
+        docker buildx rm arm-builder || true
+        
+  multi-platform-build:
+    name: Multi-Platform Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build multi-platform image
+      run: |
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          --tag ai-sre:multi-platform-test \
+          --load \
+          .
+          
+    - name: Verify multi-platform support
+      run: |
+        echo "Multi-platform build completed successfully"
+        docker images | grep ai-sre

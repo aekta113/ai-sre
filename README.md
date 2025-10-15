@@ -7,9 +7,12 @@
 [![Flux](https://img.shields.io/badge/flux-ready-purple.svg)](https://fluxcd.io/)
 
 [![CI/CD Pipeline](https://github.com/nachtschatt3n/ai-sre/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/nachtschatt3n/ai-sre/actions/workflows/ci-cd.yml)
-[![Security Scan](https://github.com/nachtschatt3n/ai-sre/actions/workflows/security.yml/badge.svg)](https://github.com/nachtschatt3n/ai-sre/actions/workflows/security.yml)
+[![Simple Security Scan](https://github.com/nachtschatt3n/ai-sre/actions/workflows/security-simple.yml/badge.svg)](https://github.com/nachtschatt3n/ai-sre/actions/workflows/security-simple.yml)
 [![Multi-Platform Tests](https://github.com/nachtschatt3n/ai-sre/actions/workflows/test-matrix.yml/badge.svg)](https://github.com/nachtschatt3n/ai-sre/actions/workflows/test-matrix.yml)
+[![ARM Build](https://github.com/nachtschatt3n/ai-sre/actions/workflows/arm-build.yml/badge.svg)](https://github.com/nachtschatt3n/ai-sre/actions/workflows/arm-build.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/nachtschatt3n/ai-sre?include_prereleases&sort=semver)](https://github.com/nachtschatt3n/ai-sre/releases)
 [![Docker Image](https://img.shields.io/badge/docker%20image-ghcr.io%2Fnachtschatt3n%2Fai--sre-blue)](https://github.com/nachtschatt3n/ai-sre/pkgs/container/ai-sre)
+[![Multi-Platform Build](https://img.shields.io/badge/platform-linux%20amd64%20%7C%20linux%20arm64-blue)](https://github.com/nachtschatt3n/ai-sre/pkgs/container/ai-sre)
 
 A lean, containerized toolbox for AI-powered Site Reliability Engineering operations. This project provides a lightweight MCP (Model Context Protocol) server that exposes Kubernetes, Git, and Flux operations through a clean REST API, designed to be orchestrated by external systems like N8N.
 
