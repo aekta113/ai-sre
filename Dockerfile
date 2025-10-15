@@ -91,13 +91,13 @@ RUN apk update && apk upgrade && apk add --no-cache \
     tree \
     findutils \
     netcat-openbsd \
+    github-cli \
     && rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 # Copy only the essential binaries from builder stage
 COPY --from=builder /usr/local/bin/kubectl /usr/local/bin/
 COPY --from=builder /usr/local/bin/helm /usr/local/bin/
 COPY --from=builder /usr/local/bin/flux /usr/local/bin/
-COPY --from=builder /usr/local/bin/gh /usr/local/bin/
 
 # Copy application files from builder stage
 COPY --from=builder /app /app
