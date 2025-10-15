@@ -39,11 +39,15 @@ test-mcp: ## Test MCP Server endpoints
 	@echo "Testing MCP Server health..."
 	@curl -s http://localhost:8080/health | jq .
 	@echo ""
-	@echo "Testing MCP Server readiness..."
-	@curl -s http://localhost:8080/ready | jq .
+	@echo "Testing MCP Protocol initialization..."
+	@curl -s -X POST http://localhost:8080/mcp/http \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "make-test", "version": "1.0.0"}}}' | jq .
 	@echo ""
-	@echo "Testing MCP Server version..."
-	@curl -s http://localhost:8080/version | jq .
+	@echo "Testing MCP tools list..."
+	@curl -s -X POST http://localhost:8080/mcp/http \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}' | jq .
 
 test-quick: ## Run quick test suite
 	@echo "Running quick test suite..."
@@ -58,22 +62,33 @@ test-integration: ## Run integration test with mock k8s
 	@./integration-test.sh
 
 test-kubectl: ## Test kubectl command via MCP
-	@echo "Testing kubectl get pods via MCP..."
-	@curl -s -X POST http://localhost:8080/kubectl/get \
+	@echo "Testing kubectl get pods via MCP Protocol..."
+	@curl -s -X POST http://localhost:8080/mcp/http \
 		-H "Content-Type: application/json" \
-		-d '{"resource": "pods", "namespace": "default", "output": "json"}' | jq .
+		-d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "kubectl_get", "arguments": {"resource": "pods", "namespace": "default", "output": "json"}}}' | jq .
 
 test-git: ## Test git command via MCP
-	@echo "Testing git status via MCP..."
-	@curl -s -X POST http://localhost:8080/git/status \
+	@echo "Testing git status via MCP Protocol..."
+	@curl -s -X POST http://localhost:8080/mcp/http \
 		-H "Content-Type: application/json" \
-		-d '{}' | jq .
+		-d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "git_status", "arguments": {}}}' | jq .
 
 test-flux: ## Test flux command via MCP
-	@echo "Testing flux get sources git via MCP..."
-	@curl -s -X POST http://localhost:8080/flux/get \
+	@echo "Testing flux status via MCP Protocol..."
+	@curl -s -X POST http://localhost:8080/mcp/http \
 		-H "Content-Type: application/json" \
-		-d '{"resource": "sources", "namespace": "flux-system"}' | jq .
+		-d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "flux_status", "arguments": {"namespace": "flux-system"}}}' | jq .
+
+test-git-tools: ## Test git tools via MCP
+	@echo "Testing git status via MCP Protocol..."
+	@curl -s -X POST http://localhost:8080/mcp/http \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "git_status", "arguments": {}}}' | jq .
+	@echo ""
+	@echo "Testing git pull via MCP Protocol..."
+	@curl -s -X POST http://localhost:8080/mcp/http \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "git_pull", "arguments": {}}}' | jq .
 
 clean: ## Clean up containers and images
 	@echo "Cleaning up..."
@@ -111,10 +126,13 @@ status: ## Check status of all components
 
 install-n8n-workflow: ## Install example N8N workflow
 	@echo "Example N8N workflow configuration:"
-	@echo "1. Import workflow from examples/n8n-workflow.json"
-	@echo "2. Configure webhook URL: http://ai-sre:8080"
-	@echo "3. Set environment variables in N8N for GitHub token and Telegram bot"
-	@echo "4. Test with sample alert from examples/sample-alert.json"
+	@echo "1. Add MCP Client node to your workflow"
+	@echo "2. Configure MCP Client:"
+	@echo "   - Connection Type: WebSocket"
+	@echo "   - Server URL: ws://ai-sre.ai.svc.cluster.local:8080/mcp"
+	@echo "   - Authentication: None"
+	@echo "3. Use available MCP tools: kubectl_get, kubectl_logs, flux_status, etc."
+	@echo "4. Test connection with health_check tool"
 
 ci-test: ## Run CI tests locally
 	@echo "Running CI tests locally..."
@@ -122,8 +140,9 @@ ci-test: ## Run CI tests locally
 	@docker run --rm -p 8080:8080 ai-sre:ci-test &
 	@sleep 10
 	@curl -f http://localhost:8080/health || exit 1
-	@curl -f http://localhost:8080/ready || exit 1
-	@curl -f http://localhost:8080/version || exit 1
+	@curl -f -X POST http://localhost:8080/mcp/http \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}' || exit 1
 	@pkill -f "ai-sre:ci-test" || true
 	@echo "✅ CI tests passed!"
 

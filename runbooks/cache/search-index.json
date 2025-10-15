@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-10-15T16:55:00Z",
+  "index": {
+    "incidents": {
+      "pod-crashloop": {
+        "keywords": ["crashloop", "pod", "restart", "oomkilled", "memory"],
+        "severity": "high",
+        "frequency": 15,
+        "resolution_time": 45,
+        "success_rate": 0.95,
+        "file": "2025-10-15-pod-crashloop.md"
+      },
+      "memory-pressure": {
+        "keywords": ["memory", "pressure", "high", "usage", "eviction"],
+        "severity": "high",
+        "frequency": 8,
+        "resolution_time": 30,
+        "success_rate": 0.92,
+        "file": "patterns/memory-pressure.md"
+      }
+    },
+    "patterns": {
+      "memory-issues": {
+        "keywords": ["memory", "leak", "pressure", "oomkilled", "limit"],
+        "category": "resource",
+        "frequency": 23,
+        "resolution_time": 25,
+        "success_rate": 0.94,
+        "file": "patterns/memory-pressure.md"
+      },
+      "pod-failures": {
+        "keywords": ["pod", "crash", "failure", "restart", "unhealthy"],
+        "category": "application",
+        "frequency": 18,
+        "resolution_time": 35,
+        "success_rate": 0.89,
+        "file": "patterns/pod-failures.md"
+      }
+    },
+    "resolutions": {
+      "memory-limit-increase": {
+        "keywords": ["memory", "limit", "increase", "crashloop", "oomkilled"],
+        "type": "automated",
+        "success_rate": 0.95,
+        "resolution_time": 8,
+        "frequency": 47,
+        "file": "resolutions/auto-generated/memory-limit-increase.md"
+      },
+      "pod-restart": {
+        "keywords": ["pod", "restart", "deployment", "scale", "recovery"],
+        "type": "automated",
+        "success_rate": 0.88,
+        "resolution_time": 5,
+        "frequency": 32,
+        "file": "resolutions/auto-generated/pod-restart.md"
+      }
+    },
+    "templates": {
+      "incident-response": {
+        "keywords": ["incident", "response", "template", "process"],
+        "type": "template",
+        "usage_count": 156,
+        "file": "static/templates/incident.md"
+      },
+      "remediation": {
+        "keywords": ["remediation", "fix", "resolution", "process"],
+        "type": "template",
+        "usage_count": 89,
+        "file": "static/templates/remediation.md"
+      }
+    }
+  },
+  "statistics": {
+    "total_incidents": 67,
+    "total_patterns": 12,
+    "total_resolutions": 23,
+    "average_resolution_time": 28,
+    "overall_success_rate": 0.91,
+    "most_common_issues": [
+      "memory-pressure",
+      "pod-crashloop",
+      "network-connectivity",
+      "disk-space",
+      "cpu-high"
+    ]
+  }
+}

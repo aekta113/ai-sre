@@ -14,16 +14,17 @@
 [![Docker Image](https://img.shields.io/badge/docker%20image-ghcr.io%2Fnachtschatt3n%2Fai--sre-blue)](https://github.com/nachtschatt3n/ai-sre/pkgs/container/ai-sre)
 [![Multi-Platform Build](https://img.shields.io/badge/platform-linux%20amd64%20%7C%20linux%20arm64-blue)](https://github.com/nachtschatt3n/ai-sre/pkgs/container/ai-sre)
 
-A lean, containerized toolbox for AI-powered Site Reliability Engineering operations. This project provides a lightweight MCP (Model Context Protocol) server that exposes Kubernetes, Git, and Flux operations through a clean REST API, designed to be orchestrated by external systems like N8N.
+A lean, containerized toolbox for AI-powered Site Reliability Engineering operations. This project provides a **Model Context Protocol (MCP) compliant server** that exposes Kubernetes, Git, and Flux operations through standardized MCP tools, designed to be seamlessly integrated with N8N's MCP Client node.
 
-> **🚀 Production Ready**: Lightweight (< 256MB RAM), fast startup (< 10s), and battle-tested for Kubernetes operations with Flux GitOps.
+> **🚀 Production Ready**: Lightweight (< 256MB RAM), fast startup (< 10s), and battle-tested for Kubernetes operations with Flux GitOps. **Now with full MCP protocol support!**
 
 ## 🏗️ Architecture
 
 - **Container**: Stateless command executor (< 256MB RAM, < 500MB image)
 - **Orchestration**: External (N8N handles intelligence, alert processing, RAG/vector store)
 - **GitOps**: Flux-only approach for simplified operations
-- **API**: RESTful MCP Server endpoints for all operations
+- **Protocol**: **Model Context Protocol (MCP)** - JSON-RPC over WebSocket/HTTP
+- **Integration**: Direct compatibility with N8N's MCP Client node
 
 ## 🚀 Quick Start
 
@@ -49,9 +50,70 @@ make init
 make build
 make run
 
-# Test the API
+# Test the MCP server
 curl http://localhost:8080/health
+
+# Test MCP protocol
+curl -X POST http://localhost:8080/mcp/http \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}'
 ```
+
+### Git Repository Configuration
+
+The AI SRE server can automatically clone and manage your Kubernetes GitOps repository on startup.
+
+#### Environment Variables
+
+Create a `.env` file from the template:
+
+```bash
+cp env.template .env
+nano .env
+```
+
+**Required Git Configuration:**
+```bash
+# Kubernetes GitOps repository
+K8S_GIT_REPO=git@github.com:your-org/your-k8s-repo.git
+K8S_GIT_BRANCH=main
+K8S_REPO_PATH=/app/k8s-repo
+
+# Git user configuration
+GITHUB_USER=AI-SRE
+GITHUB_EMAIL=ai-sre@your-org.com
+
+# Authentication (choose one)
+GITHUB_TOKEN=ghp_xxxxxxxxxxxx  # For HTTPS
+# OR mount SSH keys: ${HOME}/.ssh:/home/aisre/.ssh:ro
+```
+
+#### Authentication Methods
+
+**Option 1: SSH Keys (Recommended)**
+```bash
+# Mount SSH keys in docker-compose.yaml
+volumes:
+  - ${HOME}/.ssh:/home/aisre/.ssh:ro
+
+# Set repository URL to SSH
+K8S_GIT_REPO=git@github.com:your-org/your-k8s-repo.git
+```
+
+**Option 2: GitHub Token**
+```bash
+# Set repository URL to HTTPS
+K8S_GIT_REPO=https://github.com/your-org/your-k8s-repo.git
+GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+```
+
+#### Automatic Repository Initialization
+
+On startup, the server will:
+1. ✅ Clone the repository if it doesn't exist
+2. ✅ Pull latest changes if repository exists
+3. ✅ Checkout the specified branch
+4. ✅ Display repository status and latest commit
 
 ### Docker Compose (Recommended)
 
@@ -87,69 +149,37 @@ kubectl port-forward svc/ai-sre 8080:8080 -n ai-sre
 - **Predictive Monitoring**: Proactive alerting based on learned patterns
 - **Self-Healing**: Automatic recovery from common Kubernetes issues
 
-### 🔧 **MCP Server API Endpoints**
+### 🔧 **MCP Protocol Tools**
 
 #### Kubernetes Operations
-- `GET/POST /kubectl/{action}` - Complete kubectl command execution
-- `GET /kubectl/pods` - Pod management and troubleshooting
-- `GET /kubectl/nodes` - Node health and resource monitoring
-- `POST /kubectl/apply` - Resource deployment and updates
+- **`kubectl_get`** - Get Kubernetes resources (pods, nodes, services, etc.)
+- **`kubectl_describe`** - Describe Kubernetes resources with detailed information
+- **`kubectl_logs`** - Retrieve pod logs for troubleshooting
 
 #### GitOps & Flux
-- `GET /flux/sources` - Git repository source management
-- `POST /flux/reconcile` - Force reconciliation of workloads
-- `GET /flux/status` - Real-time sync status monitoring
-- `POST /flux/suspend` - Suspend/resume Flux operations
+- **`flux_status`** - Get Flux GitOps synchronization status and health
 
 #### Git Operations
-- `POST /git/commit` - Automated Git commits and pushes
-- `GET /git/status` - Repository status and changes
-- `POST /git/merge` - Automated merge operations
-- `GET /git/log` - Commit history and analysis
+- **`git_status`** - Check git repository status
+- **`git_pull`** - Pull latest changes from the Kubernetes Git repository
+- **`git_commit`** - Commit changes to the Kubernetes Git repository
+- **`git_push`** - Push changes to the Kubernetes Git repository
 
 #### CLI Tools & Diagnostics
-- `POST /cli/{tool}` - Execute CLI tools (sed, curl, cat, tree, find, grep, etc.)
-- `POST /cli/chain` - Chain multiple CLI commands together
-- `GET /cli/tools` - List available CLI tools and categories
-- `POST /cli/sops` - SOPS encryption/decryption with AGE keys
+- **`cli_tool`** - Execute CLI tools (jq, grep, sed, curl, cat, tree, find, etc.)
+- **`health_check`** - Check system and service health status
 
-#### Configuration Management
-- `GET /config` - Get current configuration
-- `POST /config/reload` - Reload configuration without restart
-- `GET /config/tools` - Get tool activation settings
-- `GET /env` - Environment variables and service endpoints
-
-#### Monitoring & Observability
-- `GET /prometheus/query` - Custom Prometheus queries
-- `GET /alertmanager/alerts` - Alert management
-- `GET /grafana/dashboards` - Grafana dashboard access
-- `GET /kuma/mesh` - Service mesh status
-- `GET /jaeger/traces` - Distributed tracing queries
-- `GET /loki/query` - Log aggregation queries
-- `GET /metrics` - System and application metrics
-- `POST /ai/analyze` - AI-powered log and metric analysis
-
-#### Runbook System
-- `GET /runbooks/search` - Search runbooks by query, type, and severity
-- `POST /runbooks/execute` - Execute runbooks with context and parameters
-- `POST /runbooks/create` - Create new runbooks dynamically
-- `PUT /runbooks/{id}` - Update existing runbooks
-- `GET /runbooks/{id}` - Get specific runbook content
-- `POST /runbooks/learn` - Learn from incident data and create patterns
-- `GET /runbooks/patterns` - Get learned patterns and insights
-- `GET /runbooks/executions` - Get runbook execution history
-- `GET /runbooks/health` - Check runbook system health
-
-#### Storage Management
-- `GET /storage/usage` - Get storage usage for all volumes
-- `GET /storage/backup` - Trigger storage backup operations
-- `POST /storage/cleanup` - Clean up old files based on retention policy
+#### MCP Protocol Support
+- **WebSocket Connection**: Real-time bidirectional communication
+- **JSON-RPC 2.0**: Standardized message format
+- **Tool Discovery**: Automatic tool listing and capability negotiation
+- **Resource Management**: Access to configuration and version information
 
 #### System & Health
-- `GET /health` - Health check endpoint
-- `GET /ready` - Readiness probe
-- `GET /version` - Version and build information
-- `GET /ai/status` - AI agent status and capabilities
+- **`GET /health`** - Health check endpoint
+- **`GET /ready`** - Readiness probe
+- **WebSocket**: `ws://host:port/mcp` - MCP protocol endpoint
+- **HTTP MCP**: `POST /mcp/http` - HTTP-based MCP for testing
 
 ### 📦 **Container Specifications**
 
@@ -170,171 +200,202 @@ kubectl port-forward svc/ai-sre 8080:8080 -n ai-sre
 
 ## 💡 Usage Examples
 
-### Incident Response Automation
+### N8N MCP Client Integration
 
-```bash
-# Detect and fix a crashed pod
-curl -X POST http://localhost:8080/kubectl/diagnose \
-  -H "Content-Type: application/json" \
-  -d '{"pod": "my-app-7d4b8c9f-x2k9m", "namespace": "production"}'
-
-# AI will automatically:
-# 1. Analyze pod logs
-# 2. Check resource constraints
-# 3. Apply appropriate fix
-# 4. Verify resolution
+```json
+{
+  "connectionType": "WebSocket",
+  "serverUrl": "ws://ai-sre.ai.svc.cluster.local:8080/mcp",
+  "authentication": {
+    "type": "none"
+  }
+}
 ```
 
-### GitOps Operations
+### MCP Tool Execution Examples
 
-```bash
-# Force Flux reconciliation
-curl -X POST http://localhost:8080/flux/reconcile \
-  -H "Content-Type: application/json" \
-  -d '{"source": "my-git-repo", "namespace": "flux-system"}'
-
-# Check sync status
-curl http://localhost:8080/flux/status
+#### Get Kubernetes Pods
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "kubectl_get",
+    "arguments": {
+      "resource": "pods",
+      "namespace": "default",
+      "output": "json"
+    }
+  }
+}
 ```
 
-### Automated Git Operations
-
-```bash
-# Commit and push configuration changes
-curl -X POST http://localhost:8080/git/commit \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "fix: update resource limits",
-    "files": ["manifests/deployment.yaml"],
-    "branch": "main"
-  }'
-```
-
-### CLI Diagnostics
-
-```bash
-# Search for errors in logs
-curl -X POST http://localhost:8080/cli/grep \
-  -H "Content-Type: application/json" \
-  -d '{
-    "args": ["-r", "error", "/var/log"],
-    "flags": {"i": true, "n": true}
-  }'
-
-# Find large files
-curl -X POST http://localhost:8080/cli/find \
-  -H "Content-Type: application/json" \
-  -d '{
-    "args": ["/app", "-size", "+100M", "-type", "f"]
-  }'
-
-# Process system information
-curl -X POST http://localhost:8080/cli/ps \
-  -H "Content-Type: application/json" \
-  -d '{"flags": {"aux": true}}'
-```
-
-### SOPS Secrets Management
-
-```bash
-# Encrypt a Kubernetes secret
-curl -X POST http://localhost:8080/cli/sops \
-  -H "Content-Type: application/json" \
-  -d '{
-    "operation": "encrypt",
-    "data": "apiVersion: v1\nkind: Secret\nmetadata:\n  name: my-secret\nstringData:\n  password: secret123"
-  }'
-
-# Decrypt and apply secret
-curl -X POST http://localhost:8080/cli/sops \
-  -H "Content-Type: application/json" \
-  -d '{
-    "operation": "decrypt",
-    "file": "secret.enc.yaml"
-  }'
-```
-
-### Configuration Management
-
-```bash
-# Get current configuration
-curl http://localhost:8080/config
-
-# Reload configuration
-curl -X POST http://localhost:8080/config/reload
-
-# List available CLI tools
-curl http://localhost:8080/cli/tools
-
-# Check service health
-curl http://localhost:8080/services/prometheus
-```
-
-### Runbook System
-
-```bash
-# Search for runbooks
-curl "http://localhost:8080/runbooks/search?q=pod%20crash&type=static&severity=high"
-
-# Execute a runbook
-curl -X POST http://localhost:8080/runbooks/execute \
-  -H "Content-Type: application/json" \
-  -d '{
-    "runbook_id": "pod-crash-001",
-    "context": {
+#### Get Pod Logs
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "kubectl_logs",
+    "arguments": {
+      "pod": "my-app-7d4b8c9f-x2k9m",
       "namespace": "production",
-      "pod_name": "my-app-7d4b8c9f-x2k9m",
-      "cluster": "prod-cluster"
-    },
-    "parameters": {
-      "auto_execute": false,
-      "dry_run": true
+      "lines": 100
+    }
+  }
+}
+```
+
+#### Check Flux GitOps Status
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "flux_status",
+    "arguments": {
+      "namespace": "flux-system"
+    }
+  }
+}
+```
+
+#### Execute CLI Tools
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "cli_tool",
+    "arguments": {
+      "tool": "jq",
+      "args": [".status.phase"],
+      "input": "{{ $json.kubectl_output }}"
+    }
+  }
+}
+```
+
+#### Health Check
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "health_check",
+    "arguments": {}
+  }
+}
+```
+
+#### Git Repository Operations
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "git_pull",
+    "arguments": {
+      "branch": "main",
+      "force": false
+    }
+  }
+}
+```
+
+#### Commit Changes
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "git_commit",
+    "arguments": {
+      "message": "fix: update resource limits",
+      "files": ["manifests/deployment.yaml"],
+      "all": false
+    }
+  }
+}
+```
+
+#### Push Changes
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "git_push",
+    "arguments": {
+      "branch": "main",
+      "force": false
+    }
+  }
+}
+```
+
+### MCP Protocol Testing
+
+```bash
+# Test health endpoint
+curl http://localhost:8080/health
+
+# Test MCP initialization
+curl -X POST http://localhost:8080/mcp/http \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {"tools": {}},
+      "clientInfo": {"name": "test-client", "version": "1.0.0"}
     }
   }'
 
-# Learn from incident
-curl -X POST http://localhost:8080/runbooks/learn \
+# List available tools
+curl -X POST http://localhost:8080/mcp/http \
   -H "Content-Type: application/json" \
   -d '{
-    "incident_data": {
-      "type": "pod_crash",
-      "diagnosis": ["memory_limit_exceeded"],
-      "resolution": ["increase_memory_limit"],
-      "success": true,
-      "duration": "5m"
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/list",
+    "params": {}
+  }'
+
+# Execute a tool
+curl -X POST http://localhost:8080/mcp/http \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {
+      "name": "kubectl_get",
+      "arguments": {
+        "resource": "pods",
+        "namespace": "default"
+      }
     }
   }'
-
-# Get learned patterns
-curl http://localhost:8080/runbooks/patterns
 ```
 
-### Storage Management
+### WebSocket Connection (JavaScript)
 
-```bash
-# Check storage usage
-curl http://localhost:8080/storage/usage
+```javascript
+const ws = new WebSocket('ws://localhost:8080/mcp');
 
-# Trigger backup
-curl http://localhost:8080/storage/backup
+ws.onopen = () => {
+  // Initialize MCP connection
+  ws.send(JSON.stringify({
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {"tools": {}},
+      "clientInfo": {"name": "my-client", "version": "1.0.0"}
+    }
+  }));
+};
 
-# Clean up old files
-curl -X POST http://localhost:8080/storage/cleanup \
-  -H "Content-Type: application/json" \
-  -d '{"retention_days": 30}'
-```
-
-### AI-Powered Analysis
-
-```bash
-# Analyze cluster health
-curl -X POST http://localhost:8080/ai/analyze \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "cluster_health",
-    "namespace": "production",
-    "timeframe": "24h"
-  }'
+ws.onmessage = (event) => {
+  const response = JSON.parse(event.data);
+  console.log('MCP Response:', response);
+};
 ```
 
 ## 📁 Project Structure
@@ -353,8 +414,11 @@ ai-sre/
 ├── 📁 docs/
 │   ├── 📋 REQUIREMENTS.md     # Comprehensive requirements
 │   └── 🏗️  ARCHITECTURE.md     # Architecture overview
+├── 📄 MCP_INTEGRATION.md      # MCP protocol integration guide
+├── 📄 MCP_IMPLEMENTATION_SUMMARY.md  # Implementation summary
+├── 🧪 test_mcp.py            # MCP server testing script
 ├── 📁 src/
-│   └── 🐍 mcp_server.py       # Enhanced MCP Server with CLI tools & SOPS
+│   └── 🐍 mcp_server_protocol.py  # MCP Protocol compliant server
 ├── 📁 scripts/
 │   └── 🚀 entrypoint.sh       # Container initialization
 ├── 📁 config/
@@ -376,10 +440,13 @@ See [QUICKSTART.md](QUICKSTART.md) for detailed development instructions.
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+pip install aiohttp pyyaml
 
-# Run locally
-python src/mcp_server.py
+# Run MCP server locally
+python src/mcp_server_protocol.py
+
+# Test MCP server
+python test_mcp.py
 
 # Run tests
 make test
@@ -407,6 +474,8 @@ docker-compose -f docker-compose.test.yml up --abort-on-container-exit
 - 🏗️ [Architecture Overview](docs/ARCHITECTURE.md) - System architecture details
 - 🚀 [Quick Start Guide](QUICKSTART.md) - Developer quick start guide
 - 🤖 [AI Knowledge Base](agent.md) - Incident response runbooks and best practices
+- 🔗 [MCP Integration Guide](MCP_INTEGRATION.md) - Complete MCP protocol integration guide
+- 📊 [MCP Implementation Summary](MCP_IMPLEMENTATION_SUMMARY.md) - Implementation overview and testing results
 
 ## 🤝 Contributing
 

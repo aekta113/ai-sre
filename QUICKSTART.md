@@ -2,7 +2,7 @@
 
 ## Overview
 
-AI SRE is a comprehensive, containerized CLI toolbox designed for Kubernetes cluster remediation with AI-powered operations. It provides a lightweight MCP (Model Context Protocol) server that exposes Kubernetes, Git, Flux, and diagnostic CLI operations through a clean REST API, designed to be orchestrated by external systems like N8N.
+AI SRE is a comprehensive, containerized CLI toolbox designed for Kubernetes cluster remediation with AI-powered operations. It provides a **Model Context Protocol (MCP) compliant server** that exposes Kubernetes, Git, Flux, and diagnostic CLI operations through standardized MCP tools, designed to be seamlessly integrated with N8N's MCP Client node.
 
 ## Architecture
 
@@ -12,7 +12,7 @@ AI SRE is a comprehensive, containerized CLI toolbox designed for Kubernetes clu
 │   Alerts    │     │  Orchestrator│     │   Container    │
 └─────────────┘     └──────────────┘     └────────────────┘
                            │                      │
-                           │                      ├── MCP Server
+                           │                      ├── MCP Protocol Server
                     ┌──────▼──────┐              ├── kubectl + CLI tools
                     │  RAG/Vector │              ├── git/gh
                     │    Store    │              ├── flux
@@ -24,8 +24,8 @@ AI SRE is a comprehensive, containerized CLI toolbox designed for Kubernetes clu
 ### Key Components:
 
 1. **N8N (External)**: Handles all orchestration, alert processing, RAG/vector store, and Telegram integration
-2. **AI SRE Container**: Provides CLI tools, MCP Server, secrets management, and AI learning capabilities
-3. **MCP Server**: REST API interface for N8N to execute commands and get structured responses
+2. **AI SRE Container**: Provides CLI tools, MCP Protocol Server, secrets management, and AI learning capabilities
+3. **MCP Protocol Server**: JSON-RPC over WebSocket/HTTP interface for N8N MCP Client to execute commands and get structured responses
 4. **CLI Tools**: Comprehensive set of diagnostic tools (sed, curl, cat, tree, find, grep, etc.)
 5. **Secrets Management**: SOPS with AGE encryption for secure secret handling
 6. **Configuration Management**: Flexible tool activation/deactivation via ConfigMaps
@@ -46,7 +46,64 @@ make init
 nano .env
 ```
 
-### 2. Configure Environment
+### 2. MCP Protocol Integration
+
+The AI SRE server now implements the **Model Context Protocol (MCP)** for seamless integration with N8N's MCP Client node.
+
+#### N8N MCP Client Configuration
+
+```json
+{
+  "connectionType": "WebSocket",
+  "serverUrl": "ws://ai-sre.ai.svc.cluster.local:8080/mcp",
+  "authentication": {
+    "type": "none"
+  }
+}
+```
+
+#### Available MCP Tools
+
+- **`kubectl_get`** - Get Kubernetes resources
+- **`kubectl_describe`** - Describe Kubernetes resources
+- **`kubectl_logs`** - Get pod logs
+- **`flux_status`** - Get Flux GitOps status
+- **`git_status`** - Get git repository status
+- **`cli_tool`** - Execute CLI tools (jq, grep, sed, etc.)
+- **`health_check`** - Check system health
+
+#### Testing MCP Connection
+
+```bash
+# Test health endpoint
+curl http://localhost:8080/health
+
+# Test MCP initialization
+curl -X POST http://localhost:8080/mcp/http \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {"tools": {}},
+      "clientInfo": {"name": "test-client", "version": "1.0.0"}
+    }
+  }'
+
+# List available tools
+curl -X POST http://localhost:8080/mcp/http \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/list",
+    "params": {}
+  }'
+```
+
+### 3. Configure Environment
 
 #### Environment Variables (.env)
 
@@ -666,7 +723,7 @@ ai-sre/
 ├── .env.template       # Environment template
 ├── Makefile           # Build and run commands
 ├── src/
-│   └── mcp_server.py  # MCP Server implementation
+│   └── mcp_server_protocol.py  # MCP Protocol Server implementation
 ├── scripts/
 │   └── entrypoint.sh  # Container entrypoint
 ├── k8s-repo/         # Local Git repository
@@ -674,23 +731,43 @@ ai-sre/
 └── work/             # Working directory
 ```
 
-### Adding New Commands
+### Adding New MCP Tools
 
-To add new command support to MCP Server:
+To add new tool support to the MCP Protocol Server:
 
-1. Edit `src/mcp_server.py`
-2. Add new handler class (e.g., `HelmHandler`)
-3. Add routes in `setup_routes()`
-4. Implement execute method
+1. Edit `src/mcp_server_protocol.py`
+2. Add new tool definition in `_initialize_tools()`
+3. Add tool execution method in `_execute_tool()`
+4. Implement the specific tool handler
 
 Example:
 ```python
-class HelmHandler:
-    async def execute(self, action: str, params: Dict[str, Any]):
-        # Build helm command
-        cmd = ['helm', action]
-        # Add parameters
-        # Execute and return result
+# Add to _initialize_tools() method
+"helm_list": {
+    "name": "helm_list",
+    "description": "List Helm releases",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "namespace": {"type": "string", "description": "Kubernetes namespace"},
+            "all": {"type": "boolean", "description": "Show all releases"}
+        }
+    }
+}
+
+# Add to _execute_tool() method
+elif tool_name == "helm_list":
+    return await self._helm_list(arguments)
+
+# Implement the tool handler
+async def _helm_list(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    cmd = ['helm', 'list']
+    if args.get('all', False):
+        cmd.append('--all')
+    if 'namespace' in args:
+        cmd.extend(['-n', args['namespace']])
+    
+    return await self.executor.execute(cmd)
 ```
 
 ### Testing
@@ -698,6 +775,9 @@ class HelmHandler:
 ```bash
 # Run unit tests
 make test
+
+# Test MCP server
+python test_mcp.py
 
 # Test specific endpoint
 make test-kubectl
@@ -722,8 +802,10 @@ make shell
 
 ### MCP Server not responding
 - Check port 8080 is not in use
-- Verify Python dependencies installed
+- Verify Python dependencies installed (aiohttp, yaml)
 - Check logs: `make logs`
+- Test health endpoint: `curl http://localhost:8080/health`
+- Test MCP protocol: `python test_mcp.py`
 
 ### Kubectl commands failing
 - Verify kubeconfig is mounted correctly

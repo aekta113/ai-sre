@@ -1,0 +1,188 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-10-15T16:55:00Z",
+  "patterns": {
+    "memory-pressure": {
+      "id": "PATTERN-MEMORY-PRESSURE-001",
+      "category": "resource",
+      "severity": "high",
+      "frequency": 23,
+      "detection_indicators": [
+        "container_memory_usage_bytes > container_spec_memory_limit_bytes * 0.8",
+        "kube_pod_container_status_restarts_total > 3",
+        "container_oom_events_total > 0"
+      ],
+      "common_causes": [
+        "memory_leak",
+        "resource_limits_too_low",
+        "inefficient_data_structures",
+        "large_dataset_processing"
+      ],
+      "resolution_strategies": [
+        "increase_memory_limits",
+        "restart_pods",
+        "scale_deployment",
+        "fix_memory_leaks"
+      ],
+      "prevention_measures": [
+        "memory_profiling",
+        "resource_planning",
+        "monitoring_trends",
+        "stress_testing"
+      ],
+      "success_metrics": {
+        "resolution_time": 25,
+        "success_rate": 0.94,
+        "prevention_effectiveness": 0.87
+      }
+    },
+    "pod-crashloop": {
+      "id": "PATTERN-POD-CRASHLOOP-001",
+      "category": "application",
+      "severity": "high",
+      "frequency": 18,
+      "detection_indicators": [
+        "kube_pod_status_phase = 'CrashLoopBackOff'",
+        "kube_pod_container_status_restarts_total > 5",
+        "container_oom_events_total > 0"
+      ],
+      "common_causes": [
+        "memory_limit_exceeded",
+        "application_crash",
+        "configuration_error",
+        "dependency_failure"
+      ],
+      "resolution_strategies": [
+        "check_logs",
+        "increase_resources",
+        "fix_configuration",
+        "restart_deployment"
+      ],
+      "prevention_measures": [
+        "proper_resource_limits",
+        "health_checks",
+        "configuration_validation",
+        "dependency_monitoring"
+      ],
+      "success_metrics": {
+        "resolution_time": 35,
+        "success_rate": 0.89,
+        "prevention_effectiveness": 0.82
+      }
+    },
+    "network-connectivity": {
+      "id": "PATTERN-NETWORK-CONNECTIVITY-001",
+      "category": "network",
+      "severity": "medium",
+      "frequency": 12,
+      "detection_indicators": [
+        "kube_pod_status_phase = 'Pending'",
+        "kube_service_endpoints < 1",
+        "network_connectivity_failures > 0"
+      ],
+      "common_causes": [
+        "dns_resolution_failure",
+        "network_policy_blocking",
+        "service_misconfiguration",
+        "load_balancer_issues"
+      ],
+      "resolution_strategies": [
+        "check_dns",
+        "verify_network_policies",
+        "restart_services",
+        "check_load_balancer"
+      ],
+      "prevention_measures": [
+        "network_monitoring",
+        "policy_validation",
+        "service_health_checks",
+        "load_balancer_monitoring"
+      ],
+      "success_metrics": {
+        "resolution_time": 20,
+        "success_rate": 0.92,
+        "prevention_effectiveness": 0.85
+      }
+    },
+    "disk-space": {
+      "id": "PATTERN-DISK-SPACE-001",
+      "category": "storage",
+      "severity": "high",
+      "frequency": 15,
+      "detection_indicators": [
+        "node_filesystem_avail_bytes / node_filesystem_size_bytes < 0.1",
+        "container_fs_usage_bytes > container_fs_limit_bytes * 0.9",
+        "kube_pod_status_phase = 'Pending'"
+      ],
+      "common_causes": [
+        "log_files_accumulation",
+        "docker_images_not_cleaned",
+        "temporary_files",
+        "database_logs"
+      ],
+      "resolution_strategies": [
+        "clean_logs",
+        "remove_unused_images",
+        "clean_temp_files",
+        "archive_old_data"
+      ],
+      "prevention_measures": [
+        "log_rotation",
+        "automated_cleanup",
+        "monitoring_trends",
+        "capacity_planning"
+      ],
+      "success_metrics": {
+        "resolution_time": 30,
+        "success_rate": 0.96,
+        "prevention_effectiveness": 0.90
+      }
+    },
+    "cpu-high": {
+      "id": "PATTERN-CPU-HIGH-001",
+      "category": "resource",
+      "severity": "medium",
+      "frequency": 20,
+      "detection_indicators": [
+        "rate(container_cpu_usage_seconds_total[5m]) > 0.8",
+        "node_load1 > 4",
+        "kube_pod_status_phase = 'Running'"
+      ],
+      "common_causes": [
+        "high_traffic_load",
+        "inefficient_algorithms",
+        "resource_limits_too_low",
+        "background_processes"
+      ],
+      "resolution_strategies": [
+        "scale_horizontally",
+        "optimize_code",
+        "increase_cpu_limits",
+        "kill_background_processes"
+      ],
+      "prevention_measures": [
+        "performance_monitoring",
+        "code_optimization",
+        "auto_scaling",
+        "resource_planning"
+      ],
+      "success_metrics": {
+        "resolution_time": 22,
+        "success_rate": 0.91,
+        "prevention_effectiveness": 0.88
+      }
+    }
+  },
+  "statistics": {
+    "total_patterns": 5,
+    "average_frequency": 17.6,
+    "average_resolution_time": 26.4,
+    "average_success_rate": 0.924,
+    "most_common_category": "resource",
+    "pattern_evolution": {
+      "new_patterns_this_month": 1,
+      "updated_patterns_this_month": 3,
+      "deprecated_patterns_this_month": 0
+    }
+  }
+}

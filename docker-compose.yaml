@@ -16,6 +16,12 @@ services:
       - AGENT_MODE=executor
       - AGENT_LOG_LEVEL=${AGENT_LOG_LEVEL:-INFO}
       - MCP_SERVER_PORT=${MCP_SERVER_PORT:-8080}
+      - K8S_GIT_REPO=${K8S_GIT_REPO:-}
+      - K8S_GIT_BRANCH=${K8S_GIT_BRANCH:-main}
+      - K8S_REPO_PATH=${K8S_REPO_PATH:-/app/k8s-repo}
+      - GITHUB_USER=${GITHUB_USER:-}
+      - GITHUB_EMAIL=${GITHUB_EMAIL:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
     env_file:
       - .env
     volumes:

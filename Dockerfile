@@ -58,7 +58,7 @@ RUN mkdir -p /app/src \
     /app/k8s-repo
 
 # Copy application files
-COPY src/mcp_server.py /app/src/
+COPY src/mcp_server_protocol.py /app/src/
 COPY scripts/entrypoint.sh /app/scripts/
 
 # Make scripts executable
@@ -88,5 +88,5 @@ ENV AGENT_MODE=executor \
 # Entry point
 ENTRYPOINT ["/app/scripts/entrypoint.sh"]
 
-# Default command - run MCP server
-CMD ["python3", "/app/src/mcp_server.py"]
+# Default command - run MCP protocol server
+CMD ["python3", "/app/src/mcp_server_protocol.py"]

@@ -1,0 +1,208 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-10-15T16:55:00Z",
+  "metrics": {
+    "incident_metrics": {
+      "total_incidents": 67,
+      "resolved_incidents": 61,
+      "active_incidents": 6,
+      "average_resolution_time_minutes": 28,
+      "median_resolution_time_minutes": 22,
+      "p95_resolution_time_minutes": 65,
+      "p99_resolution_time_minutes": 120,
+      "success_rate": 0.91,
+      "false_positive_rate": 0.05
+    },
+    "severity_breakdown": {
+      "critical": {
+        "count": 8,
+        "avg_resolution_time": 45,
+        "success_rate": 0.875
+      },
+      "high": {
+        "count": 23,
+        "avg_resolution_time": 32,
+        "success_rate": 0.913
+      },
+      "medium": {
+        "count": 28,
+        "avg_resolution_time": 25,
+        "success_rate": 0.929
+      },
+      "low": {
+        "count": 8,
+        "avg_resolution_time": 18,
+        "success_rate": 0.875
+      }
+    },
+    "automation_metrics": {
+      "fully_automated_resolutions": 45,
+      "partially_automated_resolutions": 16,
+      "manual_resolutions": 6,
+      "automation_rate": 0.91,
+      "ai_suggestions_used": 234,
+      "human_overrides": 12,
+      "override_rate": 0.05
+    },
+    "tool_usage_metrics": {
+      "kubectl_get": {
+        "usage_count": 456,
+        "success_rate": 0.98,
+        "avg_execution_time": 2.3
+      },
+      "kubectl_describe": {
+        "usage_count": 234,
+        "success_rate": 0.96,
+        "avg_execution_time": 3.1
+      },
+      "kubectl_logs": {
+        "usage_count": 189,
+        "success_rate": 0.94,
+        "avg_execution_time": 4.2
+      },
+      "health_check": {
+        "usage_count": 345,
+        "success_rate": 0.99,
+        "avg_execution_time": 1.8
+      },
+      "cli_tool": {
+        "usage_count": 567,
+        "success_rate": 0.97,
+        "avg_execution_time": 2.1
+      },
+      "git_status": {
+        "usage_count": 78,
+        "success_rate": 0.92,
+        "avg_execution_time": 1.5
+      },
+      "flux_status": {
+        "usage_count": 45,
+        "success_rate": 0.89,
+        "avg_execution_time": 3.8
+      }
+    },
+    "pattern_recognition_metrics": {
+      "patterns_identified": 23,
+      "pattern_accuracy": 0.87,
+      "false_positive_patterns": 3,
+      "new_patterns_discovered": 5,
+      "pattern_evolution_rate": 0.22
+    },
+    "resolution_effectiveness": {
+      "memory_issues": {
+        "total_incidents": 23,
+        "resolved": 22,
+        "success_rate": 0.96,
+        "avg_resolution_time": 25
+      },
+      "pod_failures": {
+        "total_incidents": 18,
+        "resolved": 16,
+        "success_rate": 0.89,
+        "avg_resolution_time": 35
+      },
+      "network_issues": {
+        "total_incidents": 12,
+        "resolved": 11,
+        "success_rate": 0.92,
+        "avg_resolution_time": 20
+      },
+      "disk_space": {
+        "total_incidents": 15,
+        "resolved": 14,
+        "success_rate": 0.93,
+        "avg_resolution_time": 30
+      },
+      "cpu_issues": {
+        "total_incidents": 20,
+        "resolved": 18,
+        "success_rate": 0.90,
+        "avg_resolution_time": 22
+      }
+    },
+    "learning_metrics": {
+      "knowledge_base_updates": 156,
+      "runbook_improvements": 89,
+      "new_resolution_strategies": 12,
+      "pattern_refinements": 34,
+      "automation_improvements": 23
+    },
+    "performance_metrics": {
+      "mcp_server_uptime": 0.999,
+      "avg_response_time_ms": 45,
+      "p95_response_time_ms": 120,
+      "p99_response_time_ms": 250,
+      "error_rate": 0.02,
+      "throughput_requests_per_minute": 45
+    },
+    "cost_metrics": {
+      "incidents_prevented": 23,
+      "downtime_reduced_hours": 156,
+      "manual_effort_saved_hours": 234,
+      "cost_savings_estimated": 15600,
+      "roi_percentage": 340
+    }
+  },
+  "trends": {
+    "resolution_time_trend": {
+      "last_7_days": 26,
+      "last_30_days": 28,
+      "last_90_days": 31,
+      "trend": "improving"
+    },
+    "success_rate_trend": {
+      "last_7_days": 0.93,
+      "last_30_days": 0.91,
+      "last_90_days": 0.88,
+      "trend": "improving"
+    },
+    "automation_rate_trend": {
+      "last_7_days": 0.94,
+      "last_30_days": 0.91,
+      "last_90_days": 0.87,
+      "trend": "improving"
+    },
+    "incident_frequency_trend": {
+      "last_7_days": 12,
+      "last_30_days": 67,
+      "last_90_days": 234,
+      "trend": "stable"
+    }
+  },
+  "alerts": {
+    "performance_alerts": [
+      {
+        "metric": "resolution_time",
+        "threshold": 60,
+        "current_value": 28,
+        "status": "ok"
+      },
+      {
+        "metric": "success_rate",
+        "threshold": 0.85,
+        "current_value": 0.91,
+        "status": "ok"
+      },
+      {
+        "metric": "automation_rate",
+        "threshold": 0.80,
+        "current_value": 0.91,
+        "status": "ok"
+      }
+    ],
+    "capacity_alerts": [
+      {
+        "metric": "incident_volume",
+        "threshold": 100,
+        "current_value": 67,
+        "status": "ok"
+      },
+      {
+        "metric": "pattern_complexity",
+        "threshold": 50,
+        "current_value": 23,
+        "status": "ok"
+      }
+    ]
+  }
+}

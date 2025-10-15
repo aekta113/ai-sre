@@ -23,13 +23,14 @@ AI SRE is a lean CLI toolbox container for Kubernetes cluster remediation that e
   - `helm`: Package management for Kubernetes
   - Shell utilities: `zsh`, `cat`, `find`, `tree`, `xargs`
 
-#### MCP Server Integration
-- **Purpose**: Provides structured API interface between N8N and CLI tools
+#### MCP Protocol Server Integration
+- **Purpose**: Provides Model Context Protocol interface between N8N and CLI tools
 - **Features**:
-  - Execute kubectl commands from N8N requests
+  - Execute kubectl commands via MCP tools
   - Handle authentication and context switching
-  - Provide structured JSON responses
+  - Provide structured JSON-RPC responses
   - Error handling and command validation
+  - WebSocket and HTTP transport support
 
 #### N8N Orchestration (External)
 - **Purpose**: Main orchestration and intelligence layer
@@ -38,7 +39,7 @@ AI SRE is a lean CLI toolbox container for Kubernetes cluster remediation that e
   - Manage vector store and RAG for knowledge base
   - Orchestrate remediation workflows
   - Handle human approvals via Telegram
-  - Call MCP Server endpoints for execution
+  - Call MCP Protocol Server tools for execution
   - Track remediation history and learning
 
 ### 2.2 Container Integrations
@@ -81,15 +82,15 @@ AI SRE is a lean CLI toolbox container for Kubernetes cluster remediation that e
    
 4. N8N Diagnosis
    ├─> Formulate remediation plan
-   └─> Request diagnostic data via MCP Server
-   
+   └─> Request diagnostic data via MCP Protocol Server
+
 5. Human Approval (via N8N → Telegram)
    └─> N8N sends approval request to Telegram
-   
-6. Execution (N8N → MCP Server)
-   ├─> N8N triggers kubectl commands via MCP
-   ├─> N8N triggers git operations via MCP
-   └─> N8N triggers flux sync via MCP
+
+6. Execution (N8N → MCP Protocol Server)
+   ├─> N8N triggers kubectl commands via MCP tools
+   ├─> N8N triggers git operations via MCP tools
+   └─> N8N triggers flux sync via MCP tools
    
 7. Verification
    ├─> N8N queries metrics via MCP
@@ -141,9 +142,9 @@ KUBECONFIG: "/app/.kube/config"           # Path to kubeconfig file
 KUBE_CONTEXT: "production"                # Default context to use
 KUBE_NAMESPACE: "default"                 # Default namespace
 
-# MCP Server Configuration
-MCP_SERVER_PORT: "8080"                   # Port for MCP Server to listen on
-MCP_API_KEY: "mcp_xxxxxxxxxxxxx"          # MCP authentication (if needed)
+# MCP Protocol Server Configuration
+MCP_SERVER_PORT: "8080"                   # Port for MCP Protocol Server to listen on
+MCP_AUTH_TOKEN: "mcp_xxxxxxxxxxxxx"       # MCP authentication token
 
 # Agent Configuration
 AGENT_MODE: "executor"                    # Container runs as command executor
@@ -303,69 +304,70 @@ MAX_RETRY_ATTEMPTS: "3"                   # Max retries for failed operations
 - [ ] Container runs with minimal resources
 - [ ] Documentation complete
 
-## 12. MCP Server API Specification
+## 12. MCP Protocol Specification
 
-### Endpoints
+### Available Tools
 
 ```yaml
 # Kubernetes Operations
-POST /kubectl/get
-POST /kubectl/apply
-POST /kubectl/delete
-POST /kubectl/scale
-POST /kubectl/rollout
-POST /kubectl/logs
-POST /kubectl/exec
+kubectl_get: Get Kubernetes resources
+kubectl_describe: Describe Kubernetes resources
+kubectl_logs: Retrieve pod logs
 
 # Git Operations
-POST /git/clone
-POST /git/pull
-POST /git/commit
-POST /git/push
-POST /git/branch
-POST /git/merge
+git_status: Check git repository status
+git_pull: Pull latest changes from repository
+git_commit: Commit changes to repository
+git_push: Push changes to repository
 
-# Flux Operations
-POST /flux/reconcile
-POST /flux/suspend
-POST /flux/resume
-POST /flux/get
-POST /flux/logs
+# GitOps Operations
+flux_status: Get Flux GitOps synchronization status
 
-# Monitoring
-GET /prometheus/query
-GET /alertmanager/alerts
-GET /metrics/pod
-GET /metrics/node
+# CLI Tools
+cli_tool: Execute CLI tools (jq, grep, sed, curl, etc.)
 
 # System
-GET /health
-GET /ready
-GET /version
+health_check: Check system and service health
 ```
 
-### Request/Response Format
+### MCP Protocol Endpoints
+
+```yaml
+WebSocket: ws://localhost:8080/mcp
+HTTP:      http://localhost:8080/mcp/http
+Health:    http://localhost:8080/health
+```
+
+### MCP Tool Call Format
 
 ```json
-// Request
+// Tool Call Request
 {
-  "command": "kubectl",
-  "action": "get",
-  "parameters": {
-    "resource": "pods",
-    "namespace": "default",
-    "output": "json"
-  },
-  "timeout": 30,
-  "dryRun": false
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "kubectl_get",
+    "arguments": {
+      "resource": "pods",
+      "namespace": "default",
+      "output": "json"
+    }
+  }
 }
 
-// Response
+// Tool Call Response
 {
-  "success": true,
-  "data": { /* command output */ },
-  "error": null,
-  "executionTime": 1.234,
-  "timestamp": "2025-10-15T12:00:00Z"
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Successfully executed kubectl get pods"
+      }
+    ],
+    "isError": false
+  }
 }
 ```

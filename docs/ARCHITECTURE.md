@@ -5,14 +5,14 @@
 **AI SRE** is a lightweight, containerized CLI toolbox designed to execute Kubernetes remediation commands as directed by N8N workflows. The architecture follows a clean separation of concerns:
 
 - **N8N**: Handles all orchestration, intelligence, RAG/vector store, and Telegram integration
-- **AI SRE Container**: Provides execution environment with CLI tools and MCP Server API
+- **AI SRE Container**: Provides execution environment with CLI tools and MCP Protocol Server
 - **GitOps**: All changes tracked via Git with Flux for synchronization
 
 ## Key Design Principles
 
 1. **Lean & Focused**: Container only executes commands, no complex logic
 2. **Stateless**: All state managed by N8N, container is purely functional
-3. **API-Driven**: Clean REST API interface via MCP Server
+3. **Protocol-Driven**: Model Context Protocol (MCP) interface for AI integration
 4. **GitOps Native**: All cluster changes tracked in Git
 5. **Secure**: Minimal attack surface, clear audit trail
 
@@ -35,36 +35,39 @@
 - CPU: < 0.2 cores
 - Storage: < 500MB
 
-### 2. MCP Server
+### 2. MCP Protocol Server
 
-**Purpose**: REST API interface for N8N
+**Purpose**: Model Context Protocol interface for N8N MCP Client
 
-**Endpoints**:
+**Protocol**: JSON-RPC 2.0 over WebSocket/HTTP
+
+**Available Tools**:
+- **Kubernetes Operations**: `kubectl_get`, `kubectl_describe`, `kubectl_logs`
+- **Git Operations**: `git_status`, `git_pull`, `git_commit`, `git_push`
+- **GitOps**: `flux_status`
+- **CLI Tools**: `cli_tool` (jq, grep, sed, curl, etc.)
+- **Health**: `health_check`
+
+**MCP Endpoints**:
 ```
-POST /kubectl/{action}  - Kubernetes operations
-POST /git/{action}      - Git operations  
-POST /flux/{action}     - Flux operations
-GET  /prometheus/query  - Query metrics
-GET  /alertmanager/alerts - Get active alerts
-GET  /health           - Health check
-GET  /ready            - Readiness check
-GET  /version          - Version info
+WebSocket: ws://localhost:8080/mcp
+HTTP:      http://localhost:8080/mcp/http
+Health:    http://localhost:8080/health
 ```
 
-**Response Format**:
+**MCP Tool Call Format**:
 ```json
 {
-  "command": "kubectl",
-  "action": "get",
-  "parameters": {...},
-  "result": {
-    "success": true,
-    "stdout": "...",
-    "stderr": "",
-    "exitcode": 0,
-    "duration": 1.234
-  },
-  "timestamp": "2025-10-15T12:00:00Z"
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "kubectl_get",
+    "arguments": {
+      "resource": "pods",
+      "namespace": "default"
+    }
+  }
 }
 ```
 
@@ -85,11 +88,11 @@ GET  /version          - Version info
 ```
 1. Alert → Telegram → N8N Webhook
 2. N8N analyzes alert using RAG
-3. N8N calls MCP Server for diagnostics
+3. N8N calls MCP Protocol Server for diagnostics
 4. N8N formulates remediation plan
 5. N8N requests approval via Telegram
-6. Upon approval, N8N executes fix via MCP
-7. MCP Server executes commands and returns results
+6. Upon approval, N8N executes fix via MCP tools
+7. MCP Protocol Server executes commands and returns results
 8. N8N verifies resolution
 9. N8N updates vector store with learning
 ```
@@ -99,7 +102,7 @@ GET  /version          - Version info
 ```yaml
 Kubernetes Cluster:
   ├── AI SRE Pod
-  │   └── Container with MCP Server
+  │   └── Container with MCP Protocol Server
   ├── Flux System
   │   └── GitOps synchronization
   └── Monitoring Stack
@@ -150,7 +153,7 @@ KUBE_CONTEXT=production
 # Flux
 FLUX_NAMESPACE=flux-system
 
-# MCP Server
+# MCP Protocol Server
 MCP_SERVER_PORT=8080
 
 # Monitoring URLs
@@ -176,7 +179,7 @@ ALERTMANAGER_URL=http://alertmanager:9093
 
 3. **N8N Integration**:
    - Import workflow templates
-   - Configure webhook to `http://ai-sre:8080`
+   - Configure MCP Client node to `ws://ai-sre:8080/mcp`
    - Test with sample alerts
 
 ## Key Benefits

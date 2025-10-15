@@ -20,8 +20,8 @@ The AI SRE runbook system provides a comprehensive knowledge base for automated 
          └───────────────────────┼───────────────────────┘
                                  │
                     ┌─────────────────┐
-                    │   MCP Server    │
-                    │   Runbook API   │
+                    │   MCP Protocol  │
+                    │   Server        │
                     │                 │
                     │ • Search        │
                     │ • Execute       │
@@ -55,14 +55,10 @@ The AI SRE runbook system provides a comprehensive knowledge base for automated 
 │   └── resolutions/          # Successful resolutions
 │       ├── auto-generated/   # AI-generated resolutions
 │       └── manual/           # Manually added resolutions
-├── cache/                    # Cached runbook data
-│   ├── search-index.json     # Search index
-│   ├── patterns.json         # Pattern data
-│   └── metrics.json          # Usage metrics
-└── backups/                  # Backup storage
-    ├── daily/                # Daily backups
-    ├── weekly/               # Weekly backups
-    └── monthly/              # Monthly backups
+└── cache/                    # Cached runbook data
+    ├── search-index.json     # Search index
+    ├── patterns.json         # Pattern data
+    └── metrics.json          # Usage metrics
 ```
 
 ## Runbook Types

@@ -43,6 +43,36 @@ spec:
             configMapKeyRef:
               name: ai-sre-config
               key: AGENT_LOG_LEVEL
+        - name: K8S_GIT_REPO
+          valueFrom:
+            configMapKeyRef:
+              name: ai-sre-config
+              key: K8S_GIT_REPO
+              optional: true
+        - name: K8S_GIT_BRANCH
+          valueFrom:
+            configMapKeyRef:
+              name: ai-sre-config
+              key: K8S_GIT_BRANCH
+              optional: true
+        - name: K8S_REPO_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: ai-sre-config
+              key: K8S_REPO_PATH
+              optional: true
+        - name: GITHUB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: ai-sre-config
+              key: GITHUB_USER
+              optional: true
+        - name: GITHUB_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              name: ai-sre-config
+              key: GITHUB_EMAIL
+              optional: true
         - name: SOPS_ENABLED
           valueFrom:
             configMapKeyRef:
