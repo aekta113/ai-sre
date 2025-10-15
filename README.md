@@ -42,7 +42,7 @@ git clone https://github.com/your-org/ai-sre.git
 cd ai-sre
 
 # Configure environment
-cp .env.template .env
+cp env.template .env
 # Edit .env with your configuration
 
 # Build and run
@@ -191,6 +191,14 @@ kubectl port-forward svc/ai-sre 8080:8080 -n ai-sre
 | **Startup Time** | < 10 seconds | Fast container initialization |
 | **Dependencies** | Minimal | Python + aiohttp only |
 
+### 📚 **Comprehensive Runbook System**
+- **4,212+ Lines of Content**: Extensive knowledge base with templates and best practices
+- **Static Templates**: Incident response, remediation, and postmortem templates
+- **Dynamic Content**: Real incident tracking and pattern recognition
+- **Learning System**: Continuous knowledge base updates and pattern evolution
+- **Best Practices**: Monitoring, alerting, and operational guidelines
+- **Search & Discovery**: Intelligent search index for quick knowledge retrieval
+
 ### 🛡️ **Security & Reliability**
 - **RBAC Integration**: Full Kubernetes RBAC support
 - **Secret Management**: Secure handling of credentials and tokens
@@ -202,6 +210,8 @@ kubectl port-forward svc/ai-sre 8080:8080 -n ai-sre
 
 ### N8N MCP Client Integration
 
+The AI SRE server is fully compatible with N8N's MCP Client node, providing seamless integration for automated incident response and GitOps workflows.
+
 ```json
 {
   "connectionType": "WebSocket",
@@ -211,6 +221,13 @@ kubectl port-forward svc/ai-sre 8080:8080 -n ai-sre
   }
 }
 ```
+
+#### Available N8N Integration Resources
+
+- **🤖 [Agent Prompts](docs/n8n-agent-prompts.md)**: 12 comprehensive prompts for different scenarios
+- **📝 [Incident Example](docs/n8n-incident-example.md)**: Real-world pod crashloop response workflow
+- **🧠 [Learning Prompts](docs/n8n-learning-prompts.md)**: Continuous learning and knowledge updates
+- **🔗 [Integration Guide](docs/N8N_INTEGRATION_GUIDE.md)**: Complete setup and configuration guide
 
 ### MCP Tool Execution Examples
 
@@ -402,39 +419,61 @@ ws.onmessage = (event) => {
 
 ```
 ai-sre/
-├── 📄 README.md                 # This comprehensive guide
-├── 📄 QUICKSTART.md            # Developer quick start guide
-├── 📄 LICENSE                  # MIT License
-├── 🐳 Dockerfile               # Lean container definition
-├── 🐳 docker-compose.yaml      # Local development setup
-├── 🐳 docker-compose.test.yml  # Testing environment
-├── 🔧 Makefile                 # Build and management commands
-├── ⚙️  .env.template            # Environment variables template
-├── 📝 agent.md                 # AI knowledge base and runbooks
-├── 📁 docs/
-│   ├── 📋 REQUIREMENTS.md     # Comprehensive requirements
-│   └── 🏗️  ARCHITECTURE.md     # Architecture overview
-├── 📄 MCP_INTEGRATION.md      # MCP protocol integration guide
-├── 📄 MCP_IMPLEMENTATION_SUMMARY.md  # Implementation summary
-├── 🧪 test_mcp.py            # MCP server testing script
+├── 📄 README.md                    # This comprehensive guide
+├── 📄 LICENSE                      # MIT License
+├── 🐳 Dockerfile                   # Lean container definition
+├── 🐳 docker-compose.yaml          # Local development setup
+├── 🔧 Makefile                     # Build and management commands
+├── ⚙️  env.template                 # Environment variables template
+├── 🧪 test_mcp.py                  # MCP server testing script
+├── 📁 docs/                        # Documentation
+│   ├── 📋 REQUIREMENTS.md          # Comprehensive requirements
+│   ├── 🏗️  ARCHITECTURE.md          # Architecture overview
+│   ├── 📚 RUNBOOK_SYSTEM.md        # Runbook system documentation
+│   ├── 🚀 QUICKSTART.md            # Developer quick start guide
+│   ├── 🔗 N8N_INTEGRATION_GUIDE.md # Complete N8N integration guide
+│   ├── 🤖 n8n-agent-prompts.md     # N8N Agent node prompts
+│   ├── 📝 n8n-incident-example.md  # Real-world incident example
+│   └── 🧠 n8n-learning-prompts.md  # Learning and knowledge prompts
+├── 📁 runbooks/                    # Comprehensive runbook system
+│   ├── 📁 static/                  # Static runbook templates
+│   │   ├── 📝 agent.md             # AI knowledge base and capabilities
+│   │   ├── 📁 templates/           # Incident response templates
+│   │   │   ├── 📋 incident.md      # Incident response template
+│   │   │   ├── 🔧 remediation.md   # Remediation process template
+│   │   │   └── 📊 postmortem.md    # Postmortem analysis template
+│   │   └── 📁 best-practices/      # Best practices and guidelines
+│   │       └── 📈 monitoring.md    # Monitoring best practices
+│   ├── 📁 dynamic/                 # Dynamic runbook content
+│   │   ├── 📁 incidents/           # Real incident documentation
+│   │   │   └── 🚨 2025-10-15-pod-crashloop.md
+│   │   ├── 📁 patterns/            # Learned patterns and trends
+│   │   │   └── 💾 memory-pressure.md
+│   │   └── 📁 resolutions/         # Resolution strategies
+│   │       ├── 📁 auto-generated/  # Automated resolutions
+│   │       │   └── 🔧 memory-limit-increase.md
+│   │       └── 📁 manual/          # Manual resolution procedures
+│   └── 📁 cache/                   # Runbook system cache
+│       ├── 🔍 search-index.json    # Search index for runbooks
+│       ├── 📊 patterns.json        # Pattern recognition cache
+│       └── 📈 metrics.json         # Usage metrics and analytics
 ├── 📁 src/
-│   └── 🐍 mcp_server_protocol.py  # MCP Protocol compliant server
+│   └── 🐍 mcp_server_protocol.py   # MCP Protocol compliant server
 ├── 📁 scripts/
-│   └── 🚀 entrypoint.sh       # Container initialization
+│   └── 🚀 entrypoint.sh            # Container initialization
 ├── 📁 config/
-│   └── ⚙️  config.yaml         # Runtime configuration
-├── 📁 k8s-repo/
-│   ├── 📋 configmap.yaml       # Kubernetes ConfigMap & Secrets
-│   ├── 📋 storage.yaml         # Persistent storage claims
-│   ├── 📋 deployment.yaml      # Complete deployment manifests
-│   └── 📁 manifests/           # Additional Kubernetes manifests
-├── 📁 logs/                   # Application logs
-└── 📁 work/                   # Working directory
+│   └── ⚙️  config.yaml              # Runtime configuration
+├── 📁 k8s-repo/                    # Kubernetes deployment manifests
+│   ├── 📋 configmap.yaml           # Kubernetes ConfigMap & Secrets
+│   ├── 📋 storage.yaml             # Persistent storage claims
+│   └── 📋 deployment.yaml          # Complete deployment manifests
+├── 📁 logs/                        # Application logs
+└── 📁 work/                        # Working directory
 ```
 
 ## 🔧 Development
 
-See [QUICKSTART.md](QUICKSTART.md) for detailed development instructions.
+See [docs/QUICKSTART.md](docs/QUICKSTART.md) for detailed development instructions.
 
 ### Local Development
 
@@ -449,7 +488,8 @@ python src/mcp_server_protocol.py
 python test_mcp.py
 
 # Run tests
-make test
+make test-mcp
+make test-git-tools
 
 # Lint code
 make lint
@@ -458,24 +498,33 @@ make lint
 ### Testing
 
 ```bash
-# Run integration tests
-./integration-test.sh
+# Test MCP protocol
+make test-mcp
 
-# Run quick tests
-./quick-test.sh
+# Test Git tools
+make test-git-tools
+
+# Test kubectl tools
+make test-kubectl
+
+# Test Flux tools
+make test-flux
 
 # Test with Docker Compose
-docker-compose -f docker-compose.test.yml up --abort-on-container-exit
+docker-compose up -d
 ```
 
 ## 📖 Documentation
 
 - 📋 [Requirements](docs/REQUIREMENTS.md) - Comprehensive project requirements
 - 🏗️ [Architecture Overview](docs/ARCHITECTURE.md) - System architecture details
-- 🚀 [Quick Start Guide](QUICKSTART.md) - Developer quick start guide
-- 🤖 [AI Knowledge Base](agent.md) - Incident response runbooks and best practices
-- 🔗 [MCP Integration Guide](MCP_INTEGRATION.md) - Complete MCP protocol integration guide
-- 📊 [MCP Implementation Summary](MCP_IMPLEMENTATION_SUMMARY.md) - Implementation overview and testing results
+- 📚 [Runbook System](docs/RUNBOOK_SYSTEM.md) - Comprehensive runbook system documentation
+- 🚀 [Quick Start Guide](docs/QUICKSTART.md) - Developer quick start guide
+- 🔗 [N8N Integration Guide](docs/N8N_INTEGRATION_GUIDE.md) - Complete N8N integration guide
+- 🤖 [N8N Agent Prompts](docs/n8n-agent-prompts.md) - 12 detailed N8N Agent node prompts
+- 📝 [Incident Example](docs/n8n-incident-example.md) - Real-world incident response example
+- 🧠 [Learning Prompts](docs/n8n-learning-prompts.md) - Continuous learning and knowledge update prompts
+- 📝 [AI Knowledge Base](runbooks/static/agent.md) - AI agent capabilities and knowledge base
 
 ## 🤝 Contributing
 
