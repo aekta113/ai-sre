@@ -42,73 +42,56 @@ jobs:
     - name: Test MCP Server endpoints
       if: matrix.arch == 'amd64'
       run: |
+        # Test health endpoint
         curl -f http://localhost:8080/health || exit 1
-        curl -f http://localhost:8080/ready || exit 1
-        curl -f http://localhost:8080/version || exit 1
         
-    - name: Test new API endpoints
+        # Test MCP protocol initialization
+        response=$(curl -s -X POST http://localhost:8080/mcp/http \
+          -H "Content-Type: application/json" \
+          -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}')
+        echo "MCP Initialize response: $response"
+        echo "$response" | grep -q "protocolVersion" || exit 1
+        
+        # Test MCP tools list
+        response=$(curl -s -X POST http://localhost:8080/mcp/http \
+          -H "Content-Type: application/json" \
+          -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}')
+        echo "MCP Tools list response: $response"
+        echo "$response" | grep -q "kubectl_get" || exit 1
+        
+    - name: Test MCP tools functionality
       if: matrix.arch == 'amd64'
       run: |
         # Wait a bit more for container to be fully ready
         sleep 5
         
-        # Test CLI tools endpoint
-        response=$(curl -s http://localhost:8080/cli/tools)
-        echo "CLI tools response: $response"
-        echo "$response" | grep -q "active_tools" || echo "Warning: CLI tools endpoint may have issues"
-        
-        # Test configuration endpoint
-        response=$(curl -s http://localhost:8080/config)
-        echo "Config response: $response"
-        echo "$response" | grep -q "configuration" || echo "Warning: Config endpoint may have issues"
-        
-        # Test runbook health endpoint
-        response=$(curl -s http://localhost:8080/runbooks/health)
-        echo "Runbook health response: $response"
-        echo "$response" | grep -q "status" || echo "Warning: Runbook health endpoint may have issues"
-        
-        # Test storage usage endpoint
-        response=$(curl -s http://localhost:8080/storage/usage)
-        echo "Storage usage response: $response"
-        echo "$response" | grep -q "storage_usage" || echo "Warning: Storage usage endpoint may have issues"
-        
-        # Test environment endpoint
-        response=$(curl -s http://localhost:8080/env)
-        echo "Environment response: $response"
-        echo "$response" | grep -q "environment_variables" || echo "Warning: Environment endpoint may have issues"
-        
-    - name: Test kubectl functionality
-      if: matrix.arch == 'amd64'
-      run: |
-        # Test kubectl version (should work even without cluster)
-        response=$(curl -s -X POST http://localhost:8080/kubectl/version \
+        # Test health_check tool
+        response=$(curl -s -X POST http://localhost:8080/mcp/http \
           -H "Content-Type: application/json" \
-          -d '{}')
-        echo "Kubectl response: $response"
-        # Check if response contains kubectl version info (success or expected error)
-        echo "$response" | grep -q "kubectl" || echo "Warning: kubectl test may have failed"
-          
-    - name: Test git functionality
-      if: matrix.arch == 'amd64'
-      run: |
-        # Test git status (may fail in container without git repo - this is expected)
-        response=$(curl -s -X POST http://localhost:8080/git/status \
+          -d '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "health_check", "arguments": {}}}')
+        echo "Health check tool response: $response"
+        echo "$response" | grep -q "healthy" || echo "Warning: health_check tool may have issues"
+        
+        # Test kubectl_get tool (expected to fail without cluster)
+        response=$(curl -s -X POST http://localhost:8080/mcp/http \
           -H "Content-Type: application/json" \
-          -d '{}')
-        echo "Git response: $response"
-        # Check if response contains git error (expected in container)
-        echo "$response" | grep -q "git" || echo "Warning: git test may have failed"
-          
-    - name: Test flux functionality
-      if: matrix.arch == 'amd64'
-      run: |
-        # Test flux version
-        response=$(curl -s -X POST http://localhost:8080/flux/version \
+          -d '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "kubectl_get", "arguments": {"resource": "pods"}}}')
+        echo "Kubectl get tool response: $response"
+        echo "$response" | grep -q "success" || echo "Warning: kubectl_get tool may have issues"
+        
+        # Test git_status tool (expected to fail without repo)
+        response=$(curl -s -X POST http://localhost:8080/mcp/http \
           -H "Content-Type: application/json" \
-          -d '{}')
-        echo "Flux response: $response"
-        # Check if response contains flux version info
-        echo "$response" | grep -q "flux" || echo "Warning: flux test may have failed"
+          -d '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "git_status", "arguments": {}}}')
+        echo "Git status tool response: $response"
+        echo "$response" | grep -q "success" || echo "Warning: git_status tool may have issues"
+        
+        # Test flux_status tool
+        response=$(curl -s -X POST http://localhost:8080/mcp/http \
+          -H "Content-Type: application/json" \
+          -d '{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "flux_status", "arguments": {}}}')
+        echo "Flux status tool response: $response"
+        echo "$response" | grep -q "success" || echo "Warning: flux_status tool may have issues"
           
     - name: Verify CLI tools
       if: matrix.arch == 'amd64'
