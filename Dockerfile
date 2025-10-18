@@ -4,7 +4,7 @@ FROM alpine:3.20 AS builder
 
 LABEL maintainer="AI-SRE Team"
 LABEL description="Lean CLI toolbox container for Kubernetes operations via N8N"
-LABEL version="2.0.2"
+LABEL version="2.1.1"
 
 # Update package index and install base system packages
 RUN apk update && apk upgrade && apk add --no-cache \
@@ -46,6 +46,20 @@ RUN curl -s https://fluxcd.io/install.sh | bash
 
 # Install GitHub CLI
 RUN apk add --no-cache github-cli
+
+# Install mise (modern runtime version manager)
+RUN curl https://mise.run | sh && \
+    mv ~/.local/bin/mise /usr/local/bin/mise
+
+# Install Node.js 18 via mise
+ENV MISE_DATA_DIR=/usr/local/share/mise
+ENV MISE_CACHE_DIR=/usr/local/share/mise/cache
+RUN mise use --global node@18 && \
+    mise install node@18
+
+# Install Claude CLI
+RUN eval "$(mise activate bash)" && \
+    npm install -g @anthropics/claude-code
 
 # Install Python packages for MCP Server
 RUN apk add --no-cache \
@@ -99,6 +113,10 @@ COPY --from=builder /usr/local/bin/kubectl /usr/local/bin/
 COPY --from=builder /usr/local/bin/helm /usr/local/bin/
 COPY --from=builder /usr/local/bin/flux /usr/local/bin/
 
+# Copy mise and Node.js from builder stage
+COPY --from=builder /usr/local/bin/mise /usr/local/bin/
+COPY --from=builder /usr/local/share/mise /usr/local/share/mise
+
 # Copy application files from builder stage
 COPY --from=builder /app /app
 
@@ -121,7 +139,10 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 ENV AGENT_MODE=executor \
     AGENT_LOG_LEVEL=INFO \
     MCP_SERVER_PORT=8080 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    MISE_DATA_DIR=/usr/local/share/mise \
+    MISE_CACHE_DIR=/usr/local/share/mise/cache \
+    PATH="/usr/local/share/mise/installs/node/18/bin:${PATH}"
 
 # Entry point
 ENTRYPOINT ["/app/scripts/entrypoint.sh"]
