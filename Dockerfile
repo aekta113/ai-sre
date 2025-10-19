@@ -59,8 +59,9 @@ ENV MISE_CACHE_DIR=/usr/local/share/mise/cache
 RUN mise use --global node@18 && \
     mise install node@18
 
-# Install Claude CLI
-RUN /bin/bash -c "source <(mise activate bash) && npm install -g @anthropics/claude-code"
+# Install Claude CLI (using bash since mise activate requires it)
+SHELL ["/bin/bash", "-c"]
+RUN source <(mise activate bash) && npm install -g @anthropics/claude-code
 
 # Install Python packages for MCP Server
 RUN apk add --no-cache \
