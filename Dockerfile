@@ -60,8 +60,7 @@ RUN mise use --global node@18 && \
     mise install node@18
 
 # Install Claude CLI
-RUN eval "$(mise activate bash)" && \
-    npm install -g @anthropics/claude-code
+RUN /bin/bash -c "source <(mise activate bash) && npm install -g @anthropics/claude-code"
 
 # Install Python packages for MCP Server
 RUN apk add --no-cache \
