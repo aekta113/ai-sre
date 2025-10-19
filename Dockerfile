@@ -21,7 +21,9 @@ RUN apk update && apk upgrade && apk add --no-cache \
     # SSL support for Helm
     openssl \
     # Security updates
-    ca-certificates
+    ca-certificates \
+    # Build tools for compiling Node.js from source
+    build-base linux-headers
 
 # Install kubectl
 ARG KUBECTL_VERSION=v1.31.0
